@@ -16,10 +16,10 @@ public class AuthService(
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken ct = default)
     {
         if (await users.ExistsByEmailAsync(request.Email, ct))
-            throw new InvalidOperationException("Email уже зарегистрирован.");
+            throw new InvalidOperationException("Email is already registered.");
 
         if (await users.ExistsByUsernameAsync(request.Username, ct))
-            throw new InvalidOperationException("Username уже занят.");
+            throw new InvalidOperationException("Username is already taken.");
 
         var user = new User
         {
@@ -37,10 +37,10 @@ public class AuthService(
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await users.GetByEmailAsync(request.Email, ct)
-            ?? throw new UnauthorizedAccessException("Неверный email или пароль.");
+            ?? throw new UnauthorizedAccessException("Invalid email or password.");
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Неверный email или пароль.");
+            throw new UnauthorizedAccessException("Invalid email or password.");
 
         return await BuildAuthResponseAsync(user, ct);
     }
@@ -50,10 +50,10 @@ public class AuthService(
         var token = await db.RefreshTokens
             .Include(r => r.User)
             .FirstOrDefaultAsync(r => r.Token == refreshToken, ct)
-            ?? throw new UnauthorizedAccessException("Токен не найден.");
+            ?? throw new UnauthorizedAccessException("Refresh token not found.");
 
         if (!token.IsActive)
-            throw new UnauthorizedAccessException("Токен истёк или отозван.");
+            throw new UnauthorizedAccessException("Refresh token has expired or been revoked.");
 
         token.RevokedAt = DateTime.UtcNow;
         await uow.SaveChangesAsync(ct);

@@ -45,7 +45,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "AnimeQuizTrainer API",
         Version = "v1",
-        Description = "REST API для сервиса подготовки к аниме-квизам"
+        Description = "REST API for the anime quiz training service"
     });
 
     // JWT support in Swagger UI — adds the "Authorize" button
@@ -56,7 +56,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Введите JWT токен. Например: eyJhbGci..."
+        Description = "Enter your JWT token. Example: eyJhbGci..."
     };
     options.AddSecurityDefinition("Bearer", jwtScheme);
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -77,7 +77,7 @@ builder.Services.AddSwaggerGen(options =>
         options.IncludeXmlComments(xmlPath);
 });
 
-// ── CORS (для фронтенда) ──────────────────────────────────────────────────────
+// ── CORS ─────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>

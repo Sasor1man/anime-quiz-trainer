@@ -6,19 +6,19 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AnimeQuizTrainer.API.Controllers;
 
-/// <summary>Прогресс пользователя по изучению опенингов.</summary>
+/// <summary>User progress for learning openings.</summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
 public class ProgressController(IProgressService progressService) : ControllerBase
 {
-    /// <summary>Сводная статистика: всего изучается, сколько на повтор сегодня, сколько новых.</summary>
+    /// <summary>Summary stats: total in progress, due for review today, new available.</summary>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(UserProgressSummaryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSummary(CancellationToken ct) =>
         Ok(await progressService.GetSummaryAsync(GetUserId(), ct));
 
-    /// <summary>Детальный прогресс по каждому опенингу.</summary>
+    /// <summary>Detailed per-opening progress for the current user.</summary>
     [HttpGet("openings")]
     [ProducesResponseType(typeof(IEnumerable<OpeningProgressDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOpeningsProgress(CancellationToken ct) =>

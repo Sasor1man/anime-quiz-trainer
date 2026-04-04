@@ -14,11 +14,54 @@ public class OpeningRepository(AppDbContext db) : IOpeningRepository
     public async Task<IEnumerable<Opening>> GetAllAsync(CancellationToken ct = default) =>
         await WithIncludes().OrderBy(o => o.Anime.Title).ThenBy(o => o.OrderNumber).ToListAsync(ct);
 
+    public async Task<(IEnumerable<Opening> Items, int TotalCount)> GetPagedAsync(
+        string? filterText, string? sorting, int skipCount, int maxResultCount, CancellationToken ct = default)
+    {
+        var query = WithIncludes().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filterText))
+            query = query.Where(o => o.SongTitle.Contains(filterText) || o.Anime.Title.Contains(filterText));
+
+        var total = await query.CountAsync(ct);
+
+        query = sorting?.ToLowerInvariant() switch
+        {
+            "songtitle"        => query.OrderBy(o => o.SongTitle).ThenBy(o => o.OrderNumber),
+            "songtitle desc"   => query.OrderByDescending(o => o.SongTitle).ThenBy(o => o.OrderNumber),
+            "animetitle desc"  => query.OrderByDescending(o => o.Anime.Title).ThenBy(o => o.OrderNumber),
+            "ordernumber"      => query.OrderBy(o => o.OrderNumber),
+            "ordernumber desc" => query.OrderByDescending(o => o.OrderNumber),
+            _                  => query.OrderBy(o => o.Anime.Title).ThenBy(o => o.OrderNumber)
+        };
+
+        var items = await query.Skip(skipCount).Take(maxResultCount).ToListAsync(ct);
+        return (items, total);
+    }
+
     public async Task<Opening?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         await WithIncludes().FirstOrDefaultAsync(o => o.Id == id, ct);
 
-    public async Task<IEnumerable<Opening>> GetByAnimeIdAsync(Guid animeId, CancellationToken ct = default) =>
-        await WithIncludes().Where(o => o.AnimeId == animeId).OrderBy(o => o.OrderNumber).ToListAsync(ct);
+    public async Task<(IEnumerable<Opening> Items, int TotalCount)> GetPagedByAnimeIdAsync(
+        Guid animeId, string? filterText, string? sorting, int skipCount, int maxResultCount, CancellationToken ct = default)
+    {
+        var query = WithIncludes().Where(o => o.AnimeId == animeId);
+
+        if (!string.IsNullOrWhiteSpace(filterText))
+            query = query.Where(o => o.SongTitle.Contains(filterText));
+
+        var total = await query.CountAsync(ct);
+
+        query = sorting?.ToLowerInvariant() switch
+        {
+            "songtitle"        => query.OrderBy(o => o.SongTitle),
+            "songtitle desc"   => query.OrderByDescending(o => o.SongTitle),
+            "ordernumber desc" => query.OrderByDescending(o => o.OrderNumber),
+            _                  => query.OrderBy(o => o.OrderNumber)
+        };
+
+        var items = await query.Skip(skipCount).Take(maxResultCount).ToListAsync(ct);
+        return (items, total);
+    }
 
     public async Task<IEnumerable<Opening>> GetFilteredAsync(
         IEnumerable<Difficulty>? difficulties,

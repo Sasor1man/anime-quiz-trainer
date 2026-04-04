@@ -1,4 +1,5 @@
 using AnimeQuizTrainer.Application.DTOs.Artist;
+using AnimeQuizTrainer.Application.DTOs.Common;
 using AnimeQuizTrainer.Application.DTOs.Opening;
 using AnimeQuizTrainer.Application.Interfaces;
 using AnimeQuizTrainer.Application.Services;
@@ -12,31 +13,33 @@ public class OpeningService(
     IArtistRepository artists,
     IUnitOfWork uow) : IOpeningService
 {
-    public async Task<IEnumerable<OpeningDto>> GetAllAsync(CancellationToken ct = default)
+    public async Task<PagedResult<OpeningDto>> GetListAsync(
+        string? filterText, string? sorting, int skipCount, int maxResultCount, CancellationToken ct = default)
     {
-        var list = await openings.GetAllAsync(ct);
-        return list.Select(ToDto);
+        var (items, total) = await openings.GetPagedAsync(filterText, sorting, skipCount, maxResultCount, ct);
+        return new PagedResult<OpeningDto>(total, items.Select(ToDto));
     }
 
     public async Task<OpeningDto> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var opening = await openings.GetByIdAsync(id, ct)
-            ?? throw new KeyNotFoundException($"Опенинг {id} не найден.");
+            ?? throw new KeyNotFoundException($"Opening {id} not found.");
         return ToDto(opening);
     }
 
-    public async Task<IEnumerable<OpeningDto>> GetByAnimeIdAsync(Guid animeId, CancellationToken ct = default)
+    public async Task<PagedResult<OpeningDto>> GetListByAnimeIdAsync(
+        Guid animeId, string? filterText, string? sorting, int skipCount, int maxResultCount, CancellationToken ct = default)
     {
-        var list = await openings.GetByAnimeIdAsync(animeId, ct);
-        return list.Select(ToDto);
+        var (items, total) = await openings.GetPagedByAnimeIdAsync(animeId, filterText, sorting, skipCount, maxResultCount, ct);
+        return new PagedResult<OpeningDto>(total, items.Select(ToDto));
     }
 
     public async Task<OpeningDto> CreateAsync(CreateOpeningRequest request, CancellationToken ct = default)
     {
         _ = await animes.GetByIdAsync(request.AnimeId, ct)
-            ?? throw new KeyNotFoundException($"Аниме {request.AnimeId} не найдено.");
+            ?? throw new KeyNotFoundException($"Anime {request.AnimeId} not found.");
         _ = await artists.GetByIdAsync(request.ArtistId, ct)
-            ?? throw new KeyNotFoundException($"Исполнитель {request.ArtistId} не найден.");
+            ?? throw new KeyNotFoundException($"Artist {request.ArtistId} not found.");
 
         var opening = new Opening
         {
@@ -59,10 +62,10 @@ public class OpeningService(
     public async Task<OpeningDto> UpdateAsync(Guid id, UpdateOpeningRequest request, CancellationToken ct = default)
     {
         var opening = await openings.GetByIdAsync(id, ct)
-            ?? throw new KeyNotFoundException($"Опенинг {id} не найден.");
+            ?? throw new KeyNotFoundException($"Opening {id} not found.");
 
         _ = await artists.GetByIdAsync(request.ArtistId, ct)
-            ?? throw new KeyNotFoundException($"Исполнитель {request.ArtistId} не найден.");
+            ?? throw new KeyNotFoundException($"Artist {request.ArtistId} not found.");
 
         opening.ArtistId = request.ArtistId;
         opening.SongTitle = request.SongTitle;
@@ -81,7 +84,7 @@ public class OpeningService(
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var opening = await openings.GetByIdAsync(id, ct)
-            ?? throw new KeyNotFoundException($"Опенинг {id} не найден.");
+            ?? throw new KeyNotFoundException($"Opening {id} not found.");
         openings.Delete(opening);
         await uow.SaveChangesAsync(ct);
     }

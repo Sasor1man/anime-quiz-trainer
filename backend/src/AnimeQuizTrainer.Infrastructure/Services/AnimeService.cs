@@ -1,4 +1,5 @@
 using AnimeQuizTrainer.Application.DTOs.Anime;
+using AnimeQuizTrainer.Application.DTOs.Common;
 using AnimeQuizTrainer.Application.DTOs.Tag;
 using AnimeQuizTrainer.Application.Interfaces;
 using AnimeQuizTrainer.Application.Services;
@@ -11,16 +12,17 @@ public class AnimeService(
     ITagRepository tags,
     IUnitOfWork uow) : IAnimeService
 {
-    public async Task<IEnumerable<AnimeDto>> GetAllAsync(CancellationToken ct = default)
+    public async Task<PagedResult<AnimeDto>> GetListAsync(
+        string? filterText, string? sorting, int skipCount, int maxResultCount, CancellationToken ct = default)
     {
-        var list = await animes.GetAllAsync(ct);
-        return list.Select(ToDto);
+        var (items, total) = await animes.GetPagedAsync(filterText, sorting, skipCount, maxResultCount, ct);
+        return new PagedResult<AnimeDto>(total, items.Select(ToDto));
     }
 
     public async Task<AnimeDto> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var anime = await animes.GetByIdWithTagsAsync(id, ct)
-            ?? throw new KeyNotFoundException($"Аниме {id} не найдено.");
+            ?? throw new KeyNotFoundException($"Anime {id} not found.");
         return ToDto(anime);
     }
 
@@ -42,7 +44,7 @@ public class AnimeService(
     public async Task<AnimeDto> UpdateAsync(Guid id, UpdateAnimeRequest request, CancellationToken ct = default)
     {
         var anime = await animes.GetByIdWithTagsAsync(id, ct)
-            ?? throw new KeyNotFoundException($"Аниме {id} не найдено.");
+            ?? throw new KeyNotFoundException($"Anime {id} not found.");
 
         anime.Title = request.Title;
         anime.TitleEn = request.TitleEn;
@@ -62,7 +64,7 @@ public class AnimeService(
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var anime = await animes.GetByIdAsync(id, ct)
-            ?? throw new KeyNotFoundException($"Аниме {id} не найдено.");
+            ?? throw new KeyNotFoundException($"Anime {id} not found.");
         animes.Delete(anime);
         await uow.SaveChangesAsync(ct);
     }

@@ -6,15 +6,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AnimeQuizTrainer.API.Controllers;
 
-/// <summary>Квиз — режим запоминания и тест.</summary>
+/// <summary>Quiz — learn mode and test mode.</summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
 public class QuizController(IQuizService quizService) : ControllerBase
 {
     /// <summary>
-    /// Получить следующий опенинг для режима запоминания (Anki-алгоритм).
-    /// Возвращает 204, если все опенинги изучены и повторений нет.
+    /// Get the next opening for learn mode (Anki-style spaced repetition).
+    /// Returns 204 when all openings have been studied and nothing is due.
     /// </summary>
     [HttpGet("learn/next")]
     [ProducesResponseType(typeof(LearnNextResponse), StatusCodes.Status200OK)]
@@ -26,7 +26,7 @@ public class QuizController(IQuizService quizService) : ControllerBase
     }
 
     /// <summary>
-    /// Отправить результат повторения опенинга.
+    /// Submit a review result for an opening.
     /// Quality: 0=Forgot, 1=Hard, 2=Medium, 3=Easy.
     /// </summary>
     [HttpPost("learn/review")]
@@ -35,8 +35,8 @@ public class QuizController(IQuizService quizService) : ControllerBase
         Ok(await quizService.SubmitReviewAsync(GetUserId(), request, ct));
 
     /// <summary>
-    /// Запустить тест-режим. Возвращает список опенингов с рассчитанным таймингом.
-    /// Результат теста не сохраняется — на совести пользователя.
+    /// Start test mode. Returns a list of openings with calculated timings.
+    /// Test results are not persisted.
     /// </summary>
     [HttpPost("test/start")]
     [ProducesResponseType(typeof(TestStartResponse), StatusCodes.Status200OK)]

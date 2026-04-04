@@ -24,7 +24,7 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
             KeyNotFoundException => (StatusCodes.Status404NotFound, ex.Message),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, ex.Message),
             InvalidOperationException => (StatusCodes.Status400BadRequest, ex.Message),
-            _ => (StatusCodes.Status500InternalServerError, "Внутренняя ошибка сервера.")
+            _ => (StatusCodes.Status500InternalServerError, "Internal server error.")
         };
 
         context.Response.ContentType = "application/json";

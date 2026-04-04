@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AnimeQuizTrainer.API.Controllers;
 
-/// <summary>Регистрация, вход и управление токенами.</summary>
+/// <summary>Registration, login, and token management.</summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController(IAuthService authService) : ControllerBase
 {
-    /// <summary>Регистрация нового пользователя.</summary>
+    /// <summary>Register a new user.</summary>
     [HttpPost("register")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -19,7 +19,7 @@ public class AuthController(IAuthService authService) : ControllerBase
         return Created(string.Empty, result);
     }
 
-    /// <summary>Вход по email и паролю.</summary>
+    /// <summary>Login with email and password.</summary>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -29,7 +29,7 @@ public class AuthController(IAuthService authService) : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Обновление access-токена по refresh-токену.</summary>
+    /// <summary>Refresh access token using a refresh token.</summary>
     [HttpPost("refresh")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -39,7 +39,7 @@ public class AuthController(IAuthService authService) : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Выход — отзыв refresh-токена.</summary>
+    /// <summary>Logout — revoke the refresh token.</summary>
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request, CancellationToken ct)
