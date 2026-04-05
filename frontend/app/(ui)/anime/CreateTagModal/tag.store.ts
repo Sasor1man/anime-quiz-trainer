@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx'; // 🔑 Импортируем runInAction
-import { ITag } from '../anime.type';
 import { tagService } from './tag.service';
+import { ITag } from './tag.type';
 import { FilterRequestDto } from '@/types/filterRequestDto';
 
 const defaultFilter: FilterRequestDto = {
