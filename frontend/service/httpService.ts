@@ -1,10 +1,11 @@
-// lib/http.ts
+import { buildQueryString } from './service.utils';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 class HttpFetch {
   private baseURL = 'https://anime-quiz-trainer-production.up.railway.app';
   private abortController: AbortController | null = null;
+  private token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   private async request<T>(
     method: HttpMethod,
@@ -20,6 +21,7 @@ class HttpFetch {
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {}),
       ...config?.headers,
     };
 
@@ -48,8 +50,10 @@ class HttpFetch {
     }
   }
 
-  get<T>(url: string, config?: RequestInit) {
-    return this.request<T>('GET', url, undefined, config);
+  get<T>(url: string, params?: Record<string, any>, config?: RequestInit) {
+    const query = params ? buildQueryString(params) : '';
+    const separator = url.includes('?') ? '&' : '?';
+    return this.request<T>('GET', `${url}${query ? separator + query : ''}`, undefined, config);
   }
 
   post<T>(url: string, data?: unknown, config?: RequestInit) {

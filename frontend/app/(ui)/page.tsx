@@ -1,10 +1,9 @@
 import styles from './page.module.scss';
-import AppTopBar from './components/AppTopBar/index';
 
-export default function Home() {
+export default function Home({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.page}>
-      <AppTopBar />
+      {children}
     </div>
   );
 }

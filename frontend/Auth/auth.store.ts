@@ -89,6 +89,7 @@ class AuthStore {
 
     if (this.isAdmin) storage.setItem('isAdmin', 'true');
     storage.setItem('refreshToken', data.refreshToken);
+    storage.setItem('accessToken', data.accessToken);
   };
 }
 

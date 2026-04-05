@@ -5,4 +5,8 @@ export default class API {
     static Refresh = '/api/auth/refresh'
     static Logout = '/api/auth/logout'
   }
+
+  static Anime = 'api/anime/'
+
+  static Tag = 'api/tag/'
 }

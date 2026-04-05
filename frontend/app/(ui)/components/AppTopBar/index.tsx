@@ -3,6 +3,7 @@
 import { AppBar, Button, Popover, Toolbar } from '@mui/material';
 import { FC, useState } from 'react';
 import { observer } from 'mobx-react';
+import Link from 'next/link';
 import styles from './styles.module.scss'
 import RegisterModal from './RegisterModal';
 import LoginModal from './LoginModal';
@@ -45,42 +46,60 @@ const AppTopBar: FC = () => {
 
   return ( 
     <>
-      <AppBar className={styles.appBar}>
+      <AppBar className={styles.appBar} position="static">
         <Toolbar className={styles.toolbar}>
-          {
-            isLogged ? (
-              <>
-                <Button 
-                  onClick={handlePopoverClick}
-                >
-                  {currentUser?.user.username}
-                </Button>
-                <Popover
-                  open={isPopoverOpen}
-                  anchorEl={anchorEl}
-                  onClose={handlePopoverClose}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'left',
-                  }}
-                >
-                  <Button onClick={logOut}>Logout</Button>
-                </Popover>
-              </>
-            ) : (
-              <>
-                <Button 
-                  onClick={login}
-                >
-                  Login
-                </Button>
-                <Button
-                  onClick={register}>
-                  Register
-                </Button>
-              </>
-            )
-          }
+          <div>
+            <Button>
+              <Link
+                href={'/anime'}
+              >
+                Аниме
+              </Link>
+            </Button>
+            <Button>
+              <Link
+                href={'/artists'}
+              >
+                Исполнители
+              </Link>
+            </Button>
+          </div>
+          <div>
+            {
+              isLogged ? (
+                <>
+                  <Button 
+                    onClick={handlePopoverClick}
+                  >
+                    {currentUser?.user.username}
+                  </Button>
+                  <Popover
+                    open={isPopoverOpen}
+                    anchorEl={anchorEl}
+                    onClose={handlePopoverClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                  >
+                    <Button onClick={logOut}>Logout</Button>
+                  </Popover>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    onClick={login}
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    onClick={register}>
+                    Register
+                  </Button>
+                </>
+              )
+            }
+          </div>
         </Toolbar>
       </AppBar>
 
