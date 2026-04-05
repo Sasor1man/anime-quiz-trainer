@@ -16,10 +16,10 @@ public class ProgressRepository(AppDbContext db) : IProgressRepository
         await db.UserOpeningProgresses
             .FirstOrDefaultAsync(p => p.UserId == userId && p.OpeningId == openingId, ct);
 
-    public async Task<IEnumerable<UserOpeningProgress>> GetDueAsync(Guid userId, CancellationToken ct = default) =>
+    public async Task<IEnumerable<UserOpeningProgress>> GetAvailableAsync(Guid userId, long currentPosition, CancellationToken ct = default) =>
         await WithIncludes()
-            .Where(p => p.UserId == userId && p.NextReviewAt <= DateTime.UtcNow)
-            .OrderBy(p => p.NextReviewAt)
+            .Where(p => p.UserId == userId && p.NextShowPosition <= currentPosition)
+            .OrderBy(p => p.EaseFactor)
             .ToListAsync(ct);
 
     public async Task<IEnumerable<UserOpeningProgress>> GetAllByUserAsync(Guid userId, CancellationToken ct = default) =>

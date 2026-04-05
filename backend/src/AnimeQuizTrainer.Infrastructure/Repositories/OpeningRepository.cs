@@ -87,6 +87,9 @@ public class OpeningRepository(AppDbContext db) : IOpeningRepository
         return await query.ToListAsync(ct);
     }
 
+    public async Task<int> CountAsync(CancellationToken ct = default) =>
+        await db.Openings.CountAsync(ct);
+
     public async Task AddAsync(Opening opening, CancellationToken ct = default) =>
         await db.Openings.AddAsync(opening, ct);
 

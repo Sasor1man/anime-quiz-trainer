@@ -4,15 +4,20 @@ using AnimeQuizTrainer.Application.Services;
 
 namespace AnimeQuizTrainer.Infrastructure.Services;
 
-public class ProgressService(IProgressRepository progress) : IProgressService
+public class ProgressService(
+    IProgressRepository progress,
+    IUserRepository users) : IProgressService
 {
     public async Task<UserProgressSummaryDto> GetSummaryAsync(Guid userId, CancellationToken ct = default)
     {
+        var user = await users.GetByIdAsync(userId, ct);
         var all = (await progress.GetAllByUserAsync(userId, ct)).ToList();
-        var due = all.Count(p => p.NextReviewAt <= DateTime.UtcNow);
+        var currentPosition = user?.QuizPosition ?? 0;
+
+        var availableNow = all.Count(p => p.NextShowPosition <= currentPosition);
         var neverReviewed = all.Count(p => p.ReviewCount == 0);
 
-        return new UserProgressSummaryDto(all.Count, due, neverReviewed);
+        return new UserProgressSummaryDto(all.Count, availableNow, neverReviewed);
     }
 
     public async Task<IEnumerable<OpeningProgressDto>> GetOpeningsProgressAsync(Guid userId, CancellationToken ct = default)
@@ -20,11 +25,10 @@ public class ProgressService(IProgressRepository progress) : IProgressService
         var all = await progress.GetAllByUserAsync(userId, ct);
         return all.Select(p => new OpeningProgressDto(
             OpeningService.ToDto(p.Opening),
-            p.IntervalDays,
+            p.GapSize,
             p.EaseFactor,
             p.ReviewCount,
-            p.NextReviewAt,
-            p.LastReviewedAt,
+            p.NextShowPosition,
             IsNew: p.ReviewCount == 0));
     }
 }

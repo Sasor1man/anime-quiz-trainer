@@ -4,16 +4,15 @@ namespace AnimeQuizTrainer.Application.DTOs.Progress;
 
 public record UserProgressSummaryDto(
     int TotalTracked,
-    int DueToday,
+    int AvailableNow,
     int NeverReviewed
 );
 
 public record OpeningProgressDto(
     OpeningDto Opening,
-    int IntervalDays,
+    int GapSize,
     double EaseFactor,
     int ReviewCount,
-    DateTime? NextReviewAt,
-    DateTime? LastReviewedAt,
+    long? NextShowPosition,
     bool IsNew
 );

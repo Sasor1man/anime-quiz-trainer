@@ -10,17 +10,15 @@ public class UserOpeningProgress
     public Guid OpeningId { get; set; }
     public Opening Opening { get; set; } = null!;
 
-    /// <summary>Current interval in days (SM-2).</summary>
-    public int IntervalDays { get; set; } = 1;
-
-    /// <summary>Ease factor (SM-2), starts at 2.5.</summary>
+    /// <summary>Ease factor (SM-2 style), starts at 2.5. Decreases on hard/forgot, increases on easy.</summary>
     public double EaseFactor { get; set; } = 2.5;
+
+    /// <summary>How many other openings must be shown before this one can appear again.</summary>
+    public int GapSize { get; set; } = 5;
+
+    /// <summary>User.QuizPosition value at which this opening becomes available again. Null = never reviewed yet.</summary>
+    public long? NextShowPosition { get; set; }
 
     /// <summary>Total number of reviews performed.</summary>
     public int ReviewCount { get; set; }
-
-    /// <summary>When this opening is due for the next review. Null = not started yet.</summary>
-    public DateTime? NextReviewAt { get; set; }
-
-    public DateTime? LastReviewedAt { get; set; }
 }
