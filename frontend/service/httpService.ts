@@ -14,9 +14,6 @@ class HttpFetch {
     config?: RequestInit
   ): Promise<T> {
 
-    if (this.abortController) this.abortController.abort();
-    this.abortController = new AbortController();
-
     const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url.startsWith('/') ? url : `/${url}`}`;
 
     const headers: HeadersInit = {
@@ -30,7 +27,6 @@ class HttpFetch {
         ...config,
         method,
         headers,
-        signal: this.abortController.signal,
         body: body !== undefined ? JSON.stringify(body) : undefined,
       });
 
@@ -71,6 +67,10 @@ class HttpFetch {
   cancelRequest() {
     this.abortController?.abort();
     this.abortController = null;
+  }
+
+  cancelPendingRequest() {
+    this.abortController?.abort();
   }
 }
 

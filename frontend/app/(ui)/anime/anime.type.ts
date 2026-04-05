@@ -1,20 +1,20 @@
 import { ReactNode } from 'react'
+import { ITag } from './CreateTagModal/tag.type'
 
-export interface IAnime {
+export interface IAnime extends IAnimeDto {
   id: string,
-  title: string,
-  titleEn: string,
   createdAt: Date,
   tags: ITag[]
-}
-
-export interface ITag {
-  id: string,
-  name: string
 }
 
 export interface IAction {
   icon: ReactNode,
   name: string
   onClick: () => void
+}
+
+export interface IAnimeDto {
+  title: string,
+  titleEn: string,
+  tagIds?: string[]
 }

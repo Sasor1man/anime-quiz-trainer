@@ -26,9 +26,10 @@ type TagFormData = z.infer<typeof tagSchema>;
 interface TagModalProps {
   open: boolean;
   onClose: () => void;
+  onSuccess?: () => void
 }
 
-const CreateTagModal = ({ open, onClose }: TagModalProps) => {
+const CreateTagModal = ({ open, onClose, onSuccess }: TagModalProps) => {
   const {
     register,
     handleSubmit,
@@ -82,6 +83,7 @@ const CreateTagModal = ({ open, onClose }: TagModalProps) => {
       if (editingId) {
         await updateTag({ id: editingId, name: data.name } as any);
         setEditingId(null);
+        onSuccess?.();
       } else {
         await createTag(data.name);
       }
