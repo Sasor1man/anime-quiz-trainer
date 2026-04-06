@@ -92,6 +92,11 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                 table: "Series",
                 column: "FranchiseId");
 
+            // Remove any existing anime rows that have the placeholder FranchiseId (Guid.Empty),
+            // since there is no matching Franchise and the FK constraint would fail.
+            // Cascades to Openings, AnimeTags and UserOpeningProgresses.
+            migrationBuilder.Sql("DELETE FROM \"Animes\" WHERE \"FranchiseId\" = '00000000-0000-0000-0000-000000000000';");
+
             migrationBuilder.AddForeignKey(
                 name: "FK_Animes_Franchises_FranchiseId",
                 table: "Animes",
