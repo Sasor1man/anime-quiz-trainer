@@ -63,6 +63,13 @@ const AppTopBar: FC = () => {
                 Исполнители
               </Link>
             </Button>
+            <Button>
+              <Link
+                href={'/songs'}
+              >
+                Песни
+              </Link>
+            </Button>
           </div>
           <div>
             {

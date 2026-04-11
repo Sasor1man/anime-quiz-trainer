@@ -16,3 +16,7 @@ export interface AnimeEntryInfo extends AnimeEntryDto{
 export interface AnimeEntryFilter extends FilterRequestDto {
   animeId: string
 }
+
+export interface AnimeEntryOpeningsFilter extends FilterRequestDto {
+  animeEntryId: string
+}
