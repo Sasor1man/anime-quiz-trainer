@@ -51,6 +51,13 @@ const AppTopBar: FC = () => {
           <div>
             <Button>
               <Link
+                href={'/'}
+              >
+                Главная
+              </Link>
+            </Button>
+            <Button>
+              <Link
                 href={'/anime'}
               >
                 Аниме

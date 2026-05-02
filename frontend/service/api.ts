@@ -15,4 +15,9 @@ export default class API {
   static Artist = 'api/artist/'
 
   static Song = 'api/song/'
+
+  static Quiz = class {
+    static Learn = 'api/quiz/learn/'
+    static Test = 'api/quiz/test/'
+  }
 }
