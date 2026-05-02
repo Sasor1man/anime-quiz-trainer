@@ -12,5 +12,11 @@ public class AnimeConfiguration : IEntityTypeConfiguration<Anime>
         builder.Property(a => a.Title).IsRequired().HasMaxLength(256);
         builder.Property(a => a.TitleEn).HasMaxLength(256);
         builder.HasIndex(a => a.Title);
+
+        builder.HasOne(a => a.Franchise)
+            .WithMany(f => f.Animes)
+            .HasForeignKey(a => a.FranchiseId)
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
     }
 }

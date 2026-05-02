@@ -7,28 +7,28 @@ namespace AnimeQuizTrainer.Infrastructure.Repositories;
 
 public class ProgressRepository(AppDbContext db) : IProgressRepository
 {
-    private IQueryable<UserOpeningProgress> WithIncludes() =>
-        db.UserOpeningProgresses
-            .Include(p => p.Opening).ThenInclude(o => o.Anime)
-            .Include(p => p.Opening).ThenInclude(o => o.Artist);
+    private IQueryable<UserSongProgress> WithIncludes() =>
+        db.UserSongProgresses
+            .Include(p => p.Song).ThenInclude(s => s.AnimeEntry).ThenInclude(e => e.Anime)
+            .Include(p => p.Song).ThenInclude(s => s.Artist);
 
-    public async Task<UserOpeningProgress?> GetAsync(Guid userId, Guid openingId, CancellationToken ct = default) =>
-        await db.UserOpeningProgresses
-            .FirstOrDefaultAsync(p => p.UserId == userId && p.OpeningId == openingId, ct);
+    public async Task<UserSongProgress?> GetAsync(Guid userId, Guid songId, CancellationToken ct = default) =>
+        await db.UserSongProgresses
+            .FirstOrDefaultAsync(p => p.UserId == userId && p.SongId == songId, ct);
 
-    public async Task<IEnumerable<UserOpeningProgress>> GetDueAsync(Guid userId, CancellationToken ct = default) =>
+    public async Task<IEnumerable<UserSongProgress>> GetAvailableAsync(Guid userId, long currentPosition, CancellationToken ct = default) =>
         await WithIncludes()
-            .Where(p => p.UserId == userId && p.NextReviewAt <= DateTime.UtcNow)
-            .OrderBy(p => p.NextReviewAt)
+            .Where(p => p.UserId == userId && p.NextShowPosition <= currentPosition)
+            .OrderBy(p => p.EaseFactor)
             .ToListAsync(ct);
 
-    public async Task<IEnumerable<UserOpeningProgress>> GetAllByUserAsync(Guid userId, CancellationToken ct = default) =>
+    public async Task<IEnumerable<UserSongProgress>> GetAllByUserAsync(Guid userId, CancellationToken ct = default) =>
         await WithIncludes()
             .Where(p => p.UserId == userId)
             .ToListAsync(ct);
 
-    public async Task AddAsync(UserOpeningProgress progress, CancellationToken ct = default) =>
-        await db.UserOpeningProgresses.AddAsync(progress, ct);
+    public async Task AddAsync(UserSongProgress progress, CancellationToken ct = default) =>
+        await db.UserSongProgresses.AddAsync(progress, ct);
 
-    public void Update(UserOpeningProgress progress) => db.UserOpeningProgresses.Update(progress);
+    public void Update(UserSongProgress progress) => db.UserSongProgresses.Update(progress);
 }

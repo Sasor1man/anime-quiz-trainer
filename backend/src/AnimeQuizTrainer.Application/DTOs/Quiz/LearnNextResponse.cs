@@ -1,10 +1,9 @@
-using AnimeQuizTrainer.Application.DTOs.Opening;
+using AnimeQuizTrainer.Application.DTOs.Song;
 
 namespace AnimeQuizTrainer.Application.DTOs.Quiz;
 
 public record LearnNextResponse(
-    OpeningDto Opening,
+    SongDto Song,
     bool IsNew,
-    int ReviewCount,
-    DateTime? NextReviewAt
+    int ReviewCount
 );

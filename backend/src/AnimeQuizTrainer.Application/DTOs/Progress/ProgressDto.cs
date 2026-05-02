@@ -1,19 +1,18 @@
-using AnimeQuizTrainer.Application.DTOs.Opening;
+using AnimeQuizTrainer.Application.DTOs.Song;
 
 namespace AnimeQuizTrainer.Application.DTOs.Progress;
 
 public record UserProgressSummaryDto(
     int TotalTracked,
-    int DueToday,
+    int AvailableNow,
     int NeverReviewed
 );
 
-public record OpeningProgressDto(
-    OpeningDto Opening,
-    int IntervalDays,
+public record SongProgressDto(
+    SongDto Song,
+    int GapSize,
     double EaseFactor,
     int ReviewCount,
-    DateTime? NextReviewAt,
-    DateTime? LastReviewedAt,
+    long? NextShowPosition,
     bool IsNew
 );

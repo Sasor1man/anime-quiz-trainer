@@ -2,12 +2,12 @@ using AnimeQuizTrainer.Domain.Enums;
 
 namespace AnimeQuizTrainer.Domain.Entities;
 
-public class Opening
+public class Song
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public Guid AnimeId { get; set; }
-    public Anime Anime { get; set; } = null!;
+    public Guid AnimeEntryId { get; set; }
+    public AnimeEntry AnimeEntry { get; set; } = null!;
 
     public Guid ArtistId { get; set; }
     public Artist Artist { get; set; } = null!;
@@ -15,7 +15,9 @@ public class Opening
     public string SongTitle { get; set; } = string.Empty;
     public string YoutubeUrl { get; set; } = string.Empty;
 
-    /// <summary>Opening number for this anime (OP1, OP2, ...)</summary>
+    public SongType Type { get; set; }
+
+    /// <summary>Number within the same type for this entry (e.g. OP1, ED2, ...).</summary>
     public int OrderNumber { get; set; }
 
     public Difficulty Difficulty { get; set; }
@@ -28,5 +30,5 @@ public class Opening
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public List<UserOpeningProgress> UserProgresses { get; set; } = [];
+    public List<UserSongProgress> UserProgresses { get; set; } = [];
 }

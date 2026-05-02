@@ -31,6 +31,9 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("FranchiseId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -42,9 +45,44 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("FranchiseId");
+
                     b.HasIndex("Title");
 
                     b.ToTable("Animes");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.AnimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnimeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("TitleEn")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnimeId");
+
+                    b.HasIndex("Title");
+
+                    b.ToTable("AnimeEntries");
                 });
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.AnimeTag", b =>
@@ -77,52 +115,29 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.ToTable("Artists");
                 });
 
-            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Opening", b =>
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Franchise", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("AnimeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ArtistId")
-                        .HasColumnType("uuid");
-
-                    b.Property<double>("ChorusTiming")
-                        .HasColumnType("double precision");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Difficulty")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("OrderNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SongTitle")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<double?>("StartTiming")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("YoutubeUrl")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ArtistId");
+                    b.HasIndex("Name");
 
-                    b.HasIndex("AnimeId", "OrderNumber")
-                        .IsUnique();
-
-                    b.ToTable("Openings");
+                    b.ToTable("Franchises");
                 });
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.RefreshToken", b =>
@@ -155,6 +170,58 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Song", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnimeEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ArtistId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("ChorusTiming")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Difficulty")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("OrderNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SongTitle")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<double?>("StartTiming")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("YoutubeUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArtistId");
+
+                    b.HasIndex("AnimeEntryId", "Type", "OrderNumber")
+                        .IsUnique();
+
+                    b.ToTable("Songs");
                 });
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Tag", b =>
@@ -193,6 +260,9 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<long>("QuizPosition")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -209,7 +279,7 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.UserOpeningProgress", b =>
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.UserSongProgress", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -218,32 +288,50 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.Property<double>("EaseFactor")
                         .HasColumnType("double precision");
 
-                    b.Property<int>("IntervalDays")
+                    b.Property<int>("GapSize")
                         .HasColumnType("integer");
 
-                    b.Property<DateTime?>("LastReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("NextReviewAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("OpeningId")
-                        .HasColumnType("uuid");
+                    b.Property<long?>("NextShowPosition")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("ReviewCount")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SongId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OpeningId");
+                    b.HasIndex("SongId");
 
-                    b.HasIndex("UserId", "OpeningId")
+                    b.HasIndex("UserId", "SongId")
                         .IsUnique();
 
-                    b.ToTable("UserOpeningProgresses");
+                    b.ToTable("UserSongProgresses");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Anime", b =>
+                {
+                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Franchise", "Franchise")
+                        .WithMany("Animes")
+                        .HasForeignKey("FranchiseId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Franchise");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.AnimeEntry", b =>
+                {
+                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Anime", "Anime")
+                        .WithMany("AnimeEntries")
+                        .HasForeignKey("AnimeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Anime");
                 });
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.AnimeTag", b =>
@@ -265,25 +353,6 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.Navigation("Tag");
                 });
 
-            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Opening", b =>
-                {
-                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Anime", "Anime")
-                        .WithMany("Openings")
-                        .HasForeignKey("AnimeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Artist", "Artist")
-                        .WithMany("Openings")
-                        .HasForeignKey("ArtistId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Anime");
-
-                    b.Navigation("Artist");
-                });
-
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("AnimeQuizTrainer.Domain.Entities.User", "User")
@@ -295,38 +364,67 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.UserOpeningProgress", b =>
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Song", b =>
                 {
-                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Opening", "Opening")
+                    b.HasOne("AnimeQuizTrainer.Domain.Entities.AnimeEntry", "AnimeEntry")
+                        .WithMany("Songs")
+                        .HasForeignKey("AnimeEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Artist", "Artist")
+                        .WithMany("Songs")
+                        .HasForeignKey("ArtistId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AnimeEntry");
+
+                    b.Navigation("Artist");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.UserSongProgress", b =>
+                {
+                    b.HasOne("AnimeQuizTrainer.Domain.Entities.Song", "Song")
                         .WithMany("UserProgresses")
-                        .HasForeignKey("OpeningId")
+                        .HasForeignKey("SongId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("AnimeQuizTrainer.Domain.Entities.User", "User")
-                        .WithMany("OpeningProgresses")
+                        .WithMany("SongProgresses")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Opening");
+                    b.Navigation("Song");
 
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Anime", b =>
                 {
-                    b.Navigation("AnimeTags");
+                    b.Navigation("AnimeEntries");
 
-                    b.Navigation("Openings");
+                    b.Navigation("AnimeTags");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.AnimeEntry", b =>
+                {
+                    b.Navigation("Songs");
                 });
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Artist", b =>
                 {
-                    b.Navigation("Openings");
+                    b.Navigation("Songs");
                 });
 
-            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Opening", b =>
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Franchise", b =>
+                {
+                    b.Navigation("Animes");
+                });
+
+            modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.Song", b =>
                 {
                     b.Navigation("UserProgresses");
                 });
@@ -338,9 +436,9 @@ namespace AnimeQuizTrainer.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("AnimeQuizTrainer.Domain.Entities.User", b =>
                 {
-                    b.Navigation("OpeningProgresses");
-
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("SongProgresses");
                 });
 #pragma warning restore 612, 618
         }

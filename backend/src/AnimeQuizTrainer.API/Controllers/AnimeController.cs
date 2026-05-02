@@ -15,12 +15,13 @@ public class AnimeController(IAnimeService animeService) : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<AnimeDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetList(
+        [FromQuery] Guid? franchiseId,
         [FromQuery] string? filterText,
         [FromQuery] string? sorting,
         [FromQuery] int skipCount = 0,
         [FromQuery] int maxResultCount = 10,
         CancellationToken ct = default) =>
-        Ok(await animeService.GetListAsync(filterText, sorting, skipCount, maxResultCount, ct));
+        Ok(await animeService.GetListAsync(franchiseId, filterText, sorting, skipCount, maxResultCount, ct));
 
     /// <summary>Get anime by ID.</summary>
     [HttpGet("{id:guid}")]

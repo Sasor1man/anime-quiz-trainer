@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AnimeQuizTrainer.API.Controllers;
 
-/// <summary>User progress for learning openings.</summary>
+/// <summary>User progress for learning songs.</summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -18,11 +18,11 @@ public class ProgressController(IProgressService progressService) : ControllerBa
     public async Task<IActionResult> GetSummary(CancellationToken ct) =>
         Ok(await progressService.GetSummaryAsync(GetUserId(), ct));
 
-    /// <summary>Detailed per-opening progress for the current user.</summary>
-    [HttpGet("openings")]
-    [ProducesResponseType(typeof(IEnumerable<OpeningProgressDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetOpeningsProgress(CancellationToken ct) =>
-        Ok(await progressService.GetOpeningsProgressAsync(GetUserId(), ct));
+    /// <summary>Detailed per-song progress for the current user.</summary>
+    [HttpGet("songs")]
+    [ProducesResponseType(typeof(IEnumerable<SongProgressDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSongsProgress(CancellationToken ct) =>
+        Ok(await progressService.GetSongsProgressAsync(GetUserId(), ct));
 
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)

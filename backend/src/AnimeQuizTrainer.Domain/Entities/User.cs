@@ -9,6 +9,9 @@ public class User
     public bool IsAdmin { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Monotonically increasing counter: +1 on every GetNextLearn call. Used as a position clock for cooldowns.</summary>
+    public long QuizPosition { get; set; }
+
     public List<RefreshToken> RefreshTokens { get; set; } = [];
-    public List<UserOpeningProgress> OpeningProgresses { get; set; } = [];
+    public List<UserSongProgress> SongProgresses { get; set; } = [];
 }

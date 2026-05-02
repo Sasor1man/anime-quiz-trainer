@@ -4,9 +4,10 @@ namespace AnimeQuizTrainer.Application.Interfaces;
 
 public interface IProgressRepository
 {
-    Task<UserOpeningProgress?> GetAsync(Guid userId, Guid openingId, CancellationToken ct = default);
-    Task<IEnumerable<UserOpeningProgress>> GetDueAsync(Guid userId, CancellationToken ct = default);
-    Task<IEnumerable<UserOpeningProgress>> GetAllByUserAsync(Guid userId, CancellationToken ct = default);
-    Task AddAsync(UserOpeningProgress progress, CancellationToken ct = default);
-    void Update(UserOpeningProgress progress);
+    Task<UserSongProgress?> GetAsync(Guid userId, Guid songId, CancellationToken ct = default);
+    /// <summary>Returns progress records where NextShowPosition &lt;= currentPosition (cooldown expired).</summary>
+    Task<IEnumerable<UserSongProgress>> GetAvailableAsync(Guid userId, long currentPosition, CancellationToken ct = default);
+    Task<IEnumerable<UserSongProgress>> GetAllByUserAsync(Guid userId, CancellationToken ct = default);
+    Task AddAsync(UserSongProgress progress, CancellationToken ct = default);
+    void Update(UserSongProgress progress);
 }

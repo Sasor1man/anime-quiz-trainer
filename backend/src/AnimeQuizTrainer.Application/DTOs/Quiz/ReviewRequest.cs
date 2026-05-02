@@ -4,6 +4,6 @@ using AnimeQuizTrainer.Domain.Enums;
 namespace AnimeQuizTrainer.Application.DTOs.Quiz;
 
 public record ReviewRequest(
-    [Required] Guid OpeningId,
+    [Required] Guid SongId,
     [Required] ReviewQuality Quality
 );

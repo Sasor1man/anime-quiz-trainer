@@ -13,8 +13,8 @@ namespace AnimeQuizTrainer.API.Controllers;
 public class QuizController(IQuizService quizService) : ControllerBase
 {
     /// <summary>
-    /// Get the next opening for learn mode (Anki-style spaced repetition).
-    /// Returns 204 when all openings have been studied and nothing is due.
+    /// Get the next song for learn mode (Anki-style spaced repetition).
+    /// Returns 204 when all songs have been studied and nothing is due.
     /// </summary>
     [HttpGet("learn/next")]
     [ProducesResponseType(typeof(LearnNextResponse), StatusCodes.Status200OK)]
@@ -26,7 +26,7 @@ public class QuizController(IQuizService quizService) : ControllerBase
     }
 
     /// <summary>
-    /// Submit a review result for an opening.
+    /// Submit a review result for a song.
     /// Quality: 0=Forgot, 1=Hard, 2=Medium, 3=Easy.
     /// </summary>
     [HttpPost("learn/review")]
@@ -35,7 +35,7 @@ public class QuizController(IQuizService quizService) : ControllerBase
         Ok(await quizService.SubmitReviewAsync(GetUserId(), request, ct));
 
     /// <summary>
-    /// Start test mode. Returns a list of openings with calculated timings.
+    /// Start test mode. Returns a list of songs with calculated timings.
     /// Test results are not persisted.
     /// </summary>
     [HttpPost("test/start")]

@@ -8,9 +8,16 @@ namespace AnimeQuizTrainer.Infrastructure.Repositories;
 public class AnimeRepository(AppDbContext db) : IAnimeRepository
 {
     public async Task<(IEnumerable<Anime> Items, int TotalCount)> GetPagedAsync(
-        string? filterText, string? sorting, int skipCount, int maxResultCount, CancellationToken ct = default)
+        Guid? franchiseId, string? filterText, string? sorting,
+        int skipCount, int maxResultCount, CancellationToken ct = default)
     {
-        var query = db.Animes.Include(a => a.AnimeTags).ThenInclude(at => at.Tag).AsQueryable();
+        var query = db.Animes
+            .Include(a => a.Franchise)
+            .Include(a => a.AnimeTags).ThenInclude(at => at.Tag)
+            .AsQueryable();
+
+        if (franchiseId.HasValue)
+            query = query.Where(a => a.FranchiseId == franchiseId.Value);
 
         if (!string.IsNullOrWhiteSpace(filterText))
             query = query.Where(a => a.Title.Contains(filterText) || (a.TitleEn != null && a.TitleEn.Contains(filterText)));
@@ -19,12 +26,12 @@ public class AnimeRepository(AppDbContext db) : IAnimeRepository
 
         query = sorting?.ToLowerInvariant() switch
         {
-            "title desc"    => query.OrderByDescending(a => a.Title),
-            "titleen"       => query.OrderBy(a => a.TitleEn),
-            "titleen desc"  => query.OrderByDescending(a => a.TitleEn),
-            "createdat"     => query.OrderBy(a => a.CreatedAt),
-            "createdat desc"=> query.OrderByDescending(a => a.CreatedAt),
-            _               => query.OrderBy(a => a.Title)
+            "title desc"     => query.OrderByDescending(a => a.Title),
+            "titleen"        => query.OrderBy(a => a.TitleEn),
+            "titleen desc"   => query.OrderByDescending(a => a.TitleEn),
+            "createdat"      => query.OrderBy(a => a.CreatedAt),
+            "createdat desc" => query.OrderByDescending(a => a.CreatedAt),
+            _                => query.OrderBy(a => a.Title)
         };
 
         var items = await query.Skip(skipCount).Take(maxResultCount).ToListAsync(ct);
@@ -36,6 +43,7 @@ public class AnimeRepository(AppDbContext db) : IAnimeRepository
 
     public async Task<Anime?> GetByIdWithTagsAsync(Guid id, CancellationToken ct = default) =>
         await db.Animes
+            .Include(a => a.Franchise)
             .Include(a => a.AnimeTags).ThenInclude(at => at.Tag)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 

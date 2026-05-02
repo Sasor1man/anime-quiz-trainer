@@ -19,8 +19,10 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(config.GetConnectionString("DefaultConnection")));
 
         // Repositories
+        services.AddScoped<IFranchiseRepository, FranchiseRepository>();
         services.AddScoped<IAnimeRepository, AnimeRepository>();
-        services.AddScoped<IOpeningRepository, OpeningRepository>();
+        services.AddScoped<IAnimeEntryRepository, AnimeEntryRepository>();
+        services.AddScoped<ISongRepository, SongRepository>();
         services.AddScoped<IArtistRepository, ArtistRepository>();
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
@@ -30,8 +32,10 @@ public static class ServiceCollectionExtensions
         // Services
         services.AddScoped<JwtService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IFranchiseService, FranchiseService>();
         services.AddScoped<IAnimeService, AnimeService>();
-        services.AddScoped<IOpeningService, OpeningService>();
+        services.AddScoped<IAnimeEntryService, AnimeEntryService>();
+        services.AddScoped<ISongService, SongService>();
         services.AddScoped<IArtistService, ArtistService>();
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<IQuizService, QuizService>();
