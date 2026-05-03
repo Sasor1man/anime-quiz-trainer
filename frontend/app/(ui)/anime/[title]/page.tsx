@@ -25,7 +25,7 @@ import { songsStore } from '../../songs/songs.store';
 import { ISong, SongDto, SongType } from '../../songs/songs.type';
 import { IArtist } from '../../artists/artists.type';
 import { titleStore } from './title.store';
-import { AnimeEntryDto, AnimeEntryInfo } from './title.type';
+import { AnimeEntryDto, AnimeEntryInfo, AnimeType } from './title.type';
 import { authStore } from '@/Auth/auth.store';
 
 // 🔹 2. Типы
@@ -61,7 +61,7 @@ const AnimeTitlePage: FC = () => {
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [isSeasonModalOpen, setIsSeasonModalOpen] = useState(false);
   const [isEditSeasonModalOpen, setIsEditSeasonModalOpen] = useState(false);
-  const [seasonForm, setSeasonForm] = useState<Partial<AnimeEntryDto>>({ title: '', titleEn: '', type: 0 });
+  const [seasonForm, setSeasonForm] = useState<Partial<AnimeEntryDto>>({ title: '', titleEn: '', type: AnimeType.TV });
   const [editingEntry, setEditingEntry] = useState<AnimeEntryInfo | null>(null);
 
   // Песни
@@ -105,7 +105,7 @@ const AnimeTitlePage: FC = () => {
     setIsSeasonModalOpen(false);
     setIsEditSeasonModalOpen(false);
     setEditingEntry(null);
-    setSeasonForm({ title: '', titleEn: '', type: 0 });
+    setSeasonForm({ title: '', titleEn: '', type: AnimeType.TV });
   }, []);
 
   const handleOpenAddSong = useCallback(async () => {

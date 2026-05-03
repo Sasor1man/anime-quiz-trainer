@@ -3,7 +3,7 @@ import { FilterRequestDto } from '@/types/filterRequestDto'
 export interface AnimeEntryDto {
   title: string,
   titleEn: string,
-  type: number,
+  type: AnimeType,
   animeId: string
 }
 
@@ -19,4 +19,13 @@ export interface AnimeEntryFilter extends FilterRequestDto {
 
 export interface AnimeEntryOpeningsFilter extends FilterRequestDto {
   animeEntryId: string
+}
+
+export enum AnimeType
+{
+  TV = 1,
+  Movie = 2,
+  OVA = 3,
+  ONA = 4,
+  Special = 5
 }
