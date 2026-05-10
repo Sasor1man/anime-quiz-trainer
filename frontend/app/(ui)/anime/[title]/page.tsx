@@ -7,7 +7,7 @@ import {
   Box, Typography, Grid, Paper, Chip, Button, IconButton, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox,
   Card, CardContent, CardActions, List, ListItem, ListItemText, ListItemSecondaryAction, Divider,
-  CircularProgress, Alert, Select, MenuItem, FormControl, InputLabel
+  CircularProgress, Alert, Select, MenuItem, FormControl, InputLabel, Pagination
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
@@ -28,7 +28,8 @@ import { titleStore } from './title.store';
 import { AnimeEntryDto, AnimeEntryInfo, AnimeType } from './title.type';
 import { authStore } from '@/Auth/auth.store';
 
-// 🔹 2. Типы
+// 🔹 2. Константы
+const TAGS_PER_PAGE = 10;
 
 const AnimeTitlePage: FC = () => {
   // ─────────────────────────────────────────────────────────────
@@ -41,8 +42,8 @@ const AnimeTitlePage: FC = () => {
   // 🔹 2. Деструктуризация сторов
   // ─────────────────────────────────────────────────────────────
   const { currentAnime, isLoading: animeLoading, getAnime, updateAnime } = animeStore;
-  const { tagList, getTagList } = tagStore;
-  const { artistList, getArtists } = artistsStore; // 👈 Добавили artistList
+  const { tagList, totalCount: tagTotalCount, isLoading: tagLoading } = tagStore;
+  const { artistList, getArtists } = artistsStore;
   const { songList, isLoading: songsLoading, getSongsByEntry, createSong, updateSong, deleteSong } = songsStore;
   const { entryList, isLoading: entryLoading, getEntryList, createEntry, updateEntry, deleteEntry, setFilter: setEntryFilter } = titleStore;
   const isAdmin = authStore.isAdmin;
@@ -55,7 +56,11 @@ const AnimeTitlePage: FC = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editTitleEn, setEditTitleEn] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  
+  // Теги (пагинация + фильтр)
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [tagPage, setTagPage] = useState(1);
+  const [tagFilterText, setTagFilterText] = useState('');
 
   // Сезоны
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
@@ -69,7 +74,7 @@ const AnimeTitlePage: FC = () => {
   const [isEditSongModalOpen, setIsEditSongModalOpen] = useState(false);
   const [isDeleteSongModalOpen, setIsDeleteSongModalOpen] = useState(false);
   const [songForm, setSongForm] = useState<Partial<SongDto>>({
-    songTitle: '', artistId: '', animeEntryId: '', type: SongType.op, // 👈 artistId добавлен
+    songTitle: '', artistId: '', animeEntryId: '', type: SongType.op,
     youtubeUrl: '', orderNumber: 1, difficulty: 1, startTiming: 0, chorusTiming: 0
   });
   const [editingSong, setEditingSong] = useState<ISong | null>(null);
@@ -82,6 +87,7 @@ const AnimeTitlePage: FC = () => {
   const expandedEntry = useMemo(() => visibleEntries.find(e => e.id === expandedEntryId), [visibleEntries, expandedEntryId]);
   const visibleSongs = useMemo(() => songList || [], [songList]);
   const songTypeOptions = useMemo(() => Object.entries(SongType).filter(([key]) => isNaN(Number(key))), []);
+  const tagTotalPages = useMemo(() => Math.ceil((tagTotalCount || 0) / TAGS_PER_PAGE), [tagTotalCount]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 5. Синхронные функции + коллбеки
@@ -110,7 +116,6 @@ const AnimeTitlePage: FC = () => {
 
   const handleOpenAddSong = useCallback(async () => {
     if (!expandedEntryId) return;
-    // 👈 Загружаем артистов при открытии модалки
     if (isAdmin) await getArtists();
     setSongForm({
       animeEntryId: expandedEntryId,
@@ -120,7 +125,6 @@ const AnimeTitlePage: FC = () => {
   }, [expandedEntryId, isAdmin]);
 
   const handleOpenEditSong = useCallback(async (song: ISong) => {
-    // 👈 Загружаем артистов при редактировании
     if (isAdmin) await getArtists();
     setEditingSong(song);
     setSongForm({ ...song });
@@ -141,6 +145,38 @@ const AnimeTitlePage: FC = () => {
     setSongForm({ songTitle: '', artistId: '', youtubeUrl: '', type: SongType.op, orderNumber: 1, difficulty: 1, startTiming: 0, chorusTiming: 0 });
   }, []);
 
+  // 🔹 Загрузка тегов: СЕТЬ ФИЛЬТР → ГЕТ ТЕГИ (строго по порядку!)
+  const loadTags = useCallback(async (page: number, filterText: string) => {
+    // 1️⃣ Синхронно обновляем фильтр в сторе
+    tagStore.setFilter({
+      skipCount: (page - 1) * TAGS_PER_PAGE,
+      maxResultCount: TAGS_PER_PAGE,
+      filterText: filterText,
+    });
+    // 2️⃣ Асинхронно загружаем данные (метод сам прочитает this.filter)
+    await tagStore.getTagList();
+  }, []);
+
+  const handleTagPageChange = useCallback((_: React.ChangeEvent<unknown>, page: number) => {
+    setTagPage(page);
+    loadTags(page, tagFilterText);
+  }, [tagFilterText, loadTags]);
+
+  const handleTagFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newText = e.target.value;
+    setTagFilterText(newText);
+    setTagPage(1); // Сброс на первую страницу при новом поиске
+    loadTags(1, newText);
+  }, [loadTags]);
+
+  // 🔹 Сброс состояния тегов при закрытии модалки
+  const handleCloseTagModal = useCallback(() => {
+    setIsTagModalOpen(false);
+    setTagPage(1);
+    setTagFilterText('');
+    tagStore.resetFilter(); // Сбрасываем фильтр и в сторе
+  }, []);
+
   // ─────────────────────────────────────────────────────────────
   // 🔹 6. Асинхронные функции + коллбеки
   // ─────────────────────────────────────────────────────────────
@@ -149,9 +185,13 @@ const AnimeTitlePage: FC = () => {
     await Promise.all([
       getAnime(title),
       (async () => { setEntryFilter({ animeId: title, skipCount: 0 }); await getEntryList(); })(),
-      isAdmin ? getTagList() : Promise.resolve(),
+      isAdmin ? (async () => {
+        // 🔹 Для начальной загрузки тоже: setFilter → getTagList
+        tagStore.setFilter({ skipCount: 0, maxResultCount: TAGS_PER_PAGE, filterText: '' });
+        await tagStore.getTagList();
+      })() : Promise.resolve(),
     ]);
-  }, [title, isAdmin]);
+  }, [title, isAdmin, getAnime, getEntryList, setEntryFilter]);
 
   const loadSongsForEntry = useCallback(async (entryId: string) => {
     if (!entryId) return;
@@ -204,11 +244,11 @@ const AnimeTitlePage: FC = () => {
     try {
       const dto: IAnimeDto = { title: currentAnime.title, titleEn: currentAnime.titleEn, tagIds: selectedTags };
       await updateAnime(dto, currentAnime.id);
-      setIsTagModalOpen(false);
+      handleCloseTagModal();
     } catch (e) {
       console.error('❌ Failed to update tags:', e);
     }
-  }, [currentAnime, selectedTags]);
+  }, [currentAnime, selectedTags, handleCloseTagModal]);
 
   const handleSaveSong = useCallback(async () => {
     if (!songForm.songTitle || !songForm.animeEntryId || !songForm.artistId) return;
@@ -263,6 +303,13 @@ const AnimeTitlePage: FC = () => {
       loadSongsForEntry(expandedEntryId);
     }
   }, [expandedEntryId]);
+
+  // Загрузка тегов при открытии модалки или смене страницы/фильтра
+  useEffect(() => {
+    if (isTagModalOpen && isAdmin) {
+      loadTags(tagPage, tagFilterText);
+    }
+  }, [isTagModalOpen, tagPage, tagFilterText, isAdmin, loadTags]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 8. Render
@@ -428,12 +475,25 @@ const AnimeTitlePage: FC = () => {
         </Paper>
       )}
 
-      {/* 🔹 Модалка: Редактирование тегов */}
-      <Dialog open={isTagModalOpen} onClose={() => setIsTagModalOpen(false)} maxWidth="sm" fullWidth>
+      {/* 🔹 Модалка: Редактирование тегов (ПАГИНАЦИЯ + СБРОС ФИЛЬТРА) */}
+      <Dialog open={isTagModalOpen} onClose={handleCloseTagModal} maxWidth="sm" fullWidth>
         <DialogTitle>Управление тегами</DialogTitle>
         <DialogContent>
+          {/* Поиск по тегам */}
+          <TextField
+            label="Поиск тега"
+            value={tagFilterText}
+            onChange={handleTagFilterChange}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+            placeholder="Начните вводить..."
+          />
+          
           <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5, maxHeight: 300, overflowY: 'auto' }}>
-            {tagList?.map(tag => (
+            {tagLoading ? (
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}><CircularProgress size={20} /></Box>
+            ) : tagList?.map(tag => (
               <FormControlLabel
                 key={tag.id}
                 control={<Checkbox checked={selectedTags.includes(tag.id)} onChange={() => handleToggleTag(tag.id)} />}
@@ -441,9 +501,22 @@ const AnimeTitlePage: FC = () => {
               />
             ))}
           </Box>
+          
+          {/* Пагинация */}
+          {tagTotalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Pagination 
+                count={tagTotalPages} 
+                page={tagPage} 
+                onChange={handleTagPageChange} 
+                size="small" 
+                color="primary"
+              />
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsTagModalOpen(false)}>Отмена</Button>
+          <Button onClick={handleCloseTagModal}>Отмена</Button>
           <Button variant="contained" onClick={handleSaveTags}>Сохранить</Button>
         </DialogActions>
       </Dialog>
