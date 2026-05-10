@@ -26,7 +26,7 @@ const TestSettings: FC = () => {
     difficulties: [SongDifficulty.VeryEasy],
     tagIds: [], // 👈 В будущем замени на данные из tagStore
     songTypes: [SongType.op],
-    startFrom: StartFrom.Random,
+    startFrom: StartFrom.Beginning,
     segmentSeconds: 5,
   });
 

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 import { FC, useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
@@ -18,15 +19,14 @@ import { titleStore } from '@/app/(ui)/anime/[title]/title.store';
 import VideoPlayer from '@/app/(ui)/{components}/VideoPlayer';
 
 const TestPlay: FC = () => {
-  const router = useRouter();
-  const { currentSong, progressPercent, isRunning, isFinished, settings } = testStore;
-
-  const { animeList, getAnimeList } = animeStore;
-  const { entryList, getEntryList, setFilter } = titleStore;
-
   // ─────────────────────────────────────────────────────────────
   // 🔹 1. Защита роута + редирект при завершении
   // ─────────────────────────────────────────────────────────────
+  const router = useRouter();
+  const { currentSong, progressPercent, isRunning, isFinished, settings } = testStore;
+  const { animeList, getAnimeList } = animeStore;
+  const { entryList, getEntryList, setFilter } = titleStore;
+
   useEffect(() => {
     if (!isRunning && !isFinished) router.replace('/quiz/test');
   }, [isRunning, isFinished, router]);
@@ -40,18 +40,17 @@ const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
   const playerRef = useRef<any>(null);
   const snippetTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
-
-  // Форма угадывания
+  
   const [selectedAnimeId, setSelectedAnimeId] = useState('');
   const [selectedEntryId, setSelectedEntryId] = useState('');
   const [opNumber, setOpNumber] = useState(1);
   const [guessResult, setGuessResult] = useState<'success' | 'fail' | null>(null);
-
-  const [mountKey] = useState(() => crypto.randomUUID()); 
-
-  // Показываем видео только после ответа
+  
+  const [mountKey] = useState(() => crypto.randomUUID());
+  const [isPlaying, setIsPlaying] = useState(false); // 🔹 Declarative state
+  
   const isRevealed = guessResult !== null;
+
   // ─────────────────────────────────────────────────────────────
   // 🔹 3. Загрузка данных
   // ─────────────────────────────────────────────────────────────
@@ -62,8 +61,6 @@ const TestPlay: FC = () => {
       setFilter({ animeId: selectedAnimeId, skipCount: 0, maxResultCount: 50 });
       getEntryList();
     } else {
-       
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedEntryId('');
     }
   }, [selectedAnimeId, setFilter, getEntryList]);
@@ -79,7 +76,7 @@ const TestPlay: FC = () => {
   );
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 4. Логика сниппета (v3: currentTime)
+  // 🔹 4. Логика сниппета (State-driven)
   // ─────────────────────────────────────────────────────────────
   const clearTimer = useCallback(() => {
     if (snippetTimerRef.current) clearTimeout(snippetTimerRef.current);
@@ -87,31 +84,30 @@ const TestPlay: FC = () => {
   }, []);
 
   const playSnippet = useCallback(() => {
+    clearTimer();
     const p = playerRef.current;
-    if (!p || !isPlayerReady || !currentSong) return;
+    if (!p || !currentSong) return;
 
-    const startTime = currentSong.startAtSeconds;
-    const duration = settings?.segmentSeconds ?? 5;
-
+    const startTime = currentSong.startAtSeconds ?? 0;
     p.pause();
     p.currentTime = Math.max(0, startTime);
 
-    setTimeout(() => p.play(), 100);
-    
-    clearTimer();
-    snippetTimerRef.current = setTimeout(() => p.pause(), (duration + 0.2) * 1000);
-  }, [currentSong, isPlayerReady, settings?.segmentSeconds, clearTimer]);
+    // 🔹 YouTube нужно ~150мс на обработку seek перед play
+    setTimeout(() => {
+      p.play().catch(() => {});
+      setIsPlaying(true); // 🔹 State trigger для таймера
+    }, 150);
+  }, [currentSong, clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 5. Обработчики
   // ─────────────────────────────────────────────────────────────
   const handleGuess = useCallback(() => {
     if (!selectedAnimeId || !selectedEntryId || !opNumber) return;
-  
-    // ✅ Прямой вызов сохраняет this
     const isCorrect = testStore.checkAnswer(selectedAnimeId, selectedEntryId, opNumber);
     setGuessResult(isCorrect ? 'success' : 'fail');
     clearTimer();
+    setIsPlaying(false);
     playerRef.current?.pause();
   }, [selectedAnimeId, selectedEntryId, opNumber, clearTimer]);
 
@@ -120,31 +116,44 @@ const TestPlay: FC = () => {
     setSelectedAnimeId('');
     setSelectedEntryId('');
     setOpNumber(1);
-  
-    // ✅ Прямой вызов
+    setIsPlaying(false);
     testStore.nextSong();
   }, []);
 
-  const handleRetrySnippet = useCallback(() => {
-    clearTimer();
-    playSnippet();
-  }, [playSnippet, clearTimer]);
-
-  // Авто-запуск при смене трека или готовности плеера
+  // ─────────────────────────────────────────────────────────────
+  // 🔹 6. useEffect (Управление таймером через React State)
+  // ─────────────────────────────────────────────────────────────
+  // 🔹 Таймер привязан к isPlaying, а не к ненадёжным событиям iframe
   useEffect(() => {
-    if (currentSong && isPlayerReady && !guessResult) {
+    if (isPlaying && currentSong && guessResult === null) {
+      const duration = settings?.segmentSeconds ?? 5;
+      snippetTimerRef.current = setTimeout(() => {
+        setIsPlaying(false);
+        playerRef.current?.pause();
+      }, duration * 1000);
+    }
+    return () => clearTimer();
+  }, [isPlaying, currentSong?.song.id, guessResult, settings?.segmentSeconds, clearTimer]);
+
+  // Сброс стейта при смене трека или маунте
+  useLayoutEffect(() => {
+    setIsPlaying(false);
+    clearTimer();
+    return () => {
+      playerRef.current?.pause();
+      clearTimer();
+    };
+  }, [mountKey, currentSong?.song.id, clearTimer]);
+
+  // Автозапуск при маунте или смене трека
+  useEffect(() => {
+    if (currentSong && !guessResult) {
       playSnippet();
     }
-  }, [currentSong?.song.id, isPlayerReady, playSnippet, guessResult]);
-
-  useEffect(() => () => clearTimer(), [clearTimer]);
-
-  useLayoutEffect(() => {
-    console.log('mount', mountKey)
-  }, [])
+  }, [currentSong?.song.id, mountKey, guessResult, playSnippet]);
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 6. Render
+  // 🔹 7. Render
   // ─────────────────────────────────────────────────────────────
   if (!currentSong) return <Box sx={{ p: 4 }}><Skeleton variant="rectangular" height={300} /></Box>;
 
@@ -164,20 +173,18 @@ const TestPlay: FC = () => {
         <Box sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9' }}>
     
           <VideoPlayer
-            key={mountKey}
+            key={`${currentSong?.song.id || 'loading'}-${mountKey}`}
             ref={playerRef}
             src={currentSong.song.youtubeUrl || ''}
             width="100%"
             height="100%"
             style={{ position: 'absolute', top: 0, left: 0 }}
-            playing={false}
+            playing={isPlaying} // 🔹 Declarative control
             loop={false}
             controls={isRevealed}
-            onReady={() => setIsPlayerReady(true)}
-            config={{ youtube: { playerVars: { controls: 0, modestbranding: 1, disablekb: 1 } } as any}}
+            config={{ youtube: { playerVars: { enablejsapi: 1, playsinline: 1, controls: 0, modestbranding: 1, disablekb: 1 } } as any}}
           />
 
-          {/* 🖼 Заглушка, скрывающая видео до угадывания */}
           {!isRevealed && (
             <Box sx={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -194,8 +201,8 @@ const TestPlay: FC = () => {
 
       {/* Контролы сниппета */}
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 3 }}>
-        <Button size="small" startIcon={<PlayArrowIcon />} onClick={handleRetrySnippet} disabled={guessResult !== null}>
-          Переслушать
+        <Button size="small" startIcon={<PlayArrowIcon />} onClick={playSnippet} disabled={guessResult !== null}>
+          Слушать
         </Button>
       </Box>
 
@@ -206,7 +213,7 @@ const TestPlay: FC = () => {
             options={animeList || []}
             getOptionLabel={(opt) => opt.title}
             value={selectedAnimeObj}
-            disabled={guessResult !== null} // 🔒 Блокируем после ответа
+            disabled={guessResult !== null}
             onChange={(_, newVal) => {
               setSelectedAnimeId(newVal?.id || '');
               setSelectedEntryId('');
@@ -222,7 +229,7 @@ const TestPlay: FC = () => {
             value={selectedEntryId} 
             displayEmpty 
             size="small" 
-            disabled={!selectedAnimeId || guessResult !== null} // 🔒 Блокируем
+            disabled={!selectedAnimeId || guessResult !== null}
             onChange={e => setSelectedEntryId(e.target.value)}
           >
             <MenuItem value="" disabled>Выберите сезон</MenuItem>
@@ -234,7 +241,7 @@ const TestPlay: FC = () => {
             label="№ OP"
             type="number"
             value={opNumber}
-            disabled={guessResult !== null} // 🔒 Блокируем
+            disabled={guessResult !== null}
             onChange={e => setOpNumber(Number(e.target.value))}
             inputProps={{ min: 1, max: 10 }}
           />
