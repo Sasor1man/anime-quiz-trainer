@@ -18,6 +18,8 @@ import { animeStore } from '@/app/(ui)/anime/anime.store';
 import { titleStore } from '@/app/(ui)/anime/[title]/title.store';
 import VideoPlayer from '@/app/(ui)/{components}/VideoPlayer';
 
+let GLOBAL_PLAYER_READY = false;
+
 const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
   // 🔹 1. Защита роута + редирект при завершении
@@ -50,6 +52,10 @@ const TestPlay: FC = () => {
   const [isPlaying, setIsPlaying] = useState(false); // 🔹 Declarative state
   
   const isRevealed = guessResult !== null;
+
+  // 🔹 Двойная система готовности: ref (синхронно) + state (реактивно)
+  const isApiReadyRef = useRef(GLOBAL_PLAYER_READY);
+  const [isReady, setIsReady] = useState(GLOBAL_PLAYER_READY);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 3. Загрузка данных
@@ -138,6 +144,7 @@ const TestPlay: FC = () => {
   // Сброс стейта при смене трека или маунте
   useLayoutEffect(() => {
     setIsPlaying(false);
+    setIsReady(GLOBAL_PLAYER_READY);
     clearTimer();
     return () => {
       playerRef.current?.pause();
@@ -147,10 +154,19 @@ const TestPlay: FC = () => {
 
   // Автозапуск при маунте или смене трека
   useEffect(() => {
-    if (currentSong && !guessResult) {
+    if (currentSong && !guessResult && isReady) {
       playSnippet();
     }
-  }, [currentSong?.song.id, mountKey, guessResult, playSnippet]);
+  }, [currentSong?.song.id, mountKey, guessResult, playSnippet, isReady]);
+
+  useEffect(() => {
+    console.log('ready useEffect', isApiReadyRef.current)
+    
+    if (isApiReadyRef.current && !isReady) {
+      setIsReady(true);
+      console.log('ready')
+    }
+  }, [mountKey, currentSong?.song.id, isReady]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 7. Render
@@ -182,6 +198,11 @@ const TestPlay: FC = () => {
             playing={isPlaying} // 🔹 Declarative control
             loop={false}
             controls={isRevealed}
+            onReady={() => {
+              isApiReadyRef.current = true;
+              setIsReady(true);
+              GLOBAL_PLAYER_READY = true; 
+            }}
             config={{ youtube: { playerVars: { enablejsapi: 1, playsinline: 1, controls: 0, modestbranding: 1, disablekb: 1 } } as any}}
           />
 

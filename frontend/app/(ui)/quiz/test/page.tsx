@@ -51,6 +51,7 @@ const TestSettings: FC = () => {
     await testStore.startTest(form);
     // Если ошибок нет → идем на страницу прохождения
     if (!testStore.error) {
+      router.refresh();
       router.push('/quiz/test/play');
     }
   }, [form, router]);
