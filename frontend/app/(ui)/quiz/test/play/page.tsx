@@ -18,6 +18,11 @@ import { animeStore } from '@/app/(ui)/anime/anime.store';
 import { titleStore } from '@/app/(ui)/anime/[title]/title.store';
 import VideoPlayer from '@/app/(ui)/{components}/VideoPlayer';
 
+// ебать костыль, навайбкодил хуйню, теперь хз как исправить, skill issue, хули
+// не бейте ногами
+// не ну оно хотя бы работает, ток первая песня все равно на секунду меньше, это уже хз как костылить, мб просто на таймер поставить инициализацию ютуба
+// но пока можно забить, надеюсь сильно не будет никого тригерить
+// TODO убрать костыль
 let GLOBAL_PLAYER_READY = false;
 
 const TestPlay: FC = () => {
