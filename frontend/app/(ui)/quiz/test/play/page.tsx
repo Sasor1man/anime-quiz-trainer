@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { FC, useEffect, useState, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import { observer } from 'mobx-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -47,6 +47,8 @@ const TestPlay: FC = () => {
   const [selectedEntryId, setSelectedEntryId] = useState('');
   const [opNumber, setOpNumber] = useState(1);
   const [guessResult, setGuessResult] = useState<'success' | 'fail' | null>(null);
+
+  const [mountKey] = useState(() => crypto.randomUUID()); 
 
   // Показываем видео только после ответа
   const isRevealed = guessResult !== null;
@@ -100,15 +102,6 @@ const TestPlay: FC = () => {
     snippetTimerRef.current = setTimeout(() => p.pause(), (duration + 0.2) * 1000);
   }, [currentSong, isPlayerReady, settings?.segmentSeconds, clearTimer]);
 
-  // Авто-запуск при смене трека или готовности плеера
-  useEffect(() => {
-    if (currentSong && isPlayerReady && !guessResult) {
-      playSnippet();
-    }
-  }, [currentSong?.song.id, isPlayerReady, playSnippet, guessResult]);
-
-  useEffect(() => () => clearTimer(), [clearTimer]);
-
   // ─────────────────────────────────────────────────────────────
   // 🔹 5. Обработчики
   // ─────────────────────────────────────────────────────────────
@@ -137,6 +130,19 @@ const TestPlay: FC = () => {
     playSnippet();
   }, [playSnippet, clearTimer]);
 
+  // Авто-запуск при смене трека или готовности плеера
+  useEffect(() => {
+    if (currentSong && isPlayerReady && !guessResult) {
+      playSnippet();
+    }
+  }, [currentSong?.song.id, isPlayerReady, playSnippet, guessResult]);
+
+  useEffect(() => () => clearTimer(), [clearTimer]);
+
+  useLayoutEffect(() => {
+    console.log('mount', mountKey)
+  }, [])
+
   // ─────────────────────────────────────────────────────────────
   // 🔹 6. Render
   // ─────────────────────────────────────────────────────────────
@@ -158,6 +164,7 @@ const TestPlay: FC = () => {
         <Box sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9' }}>
     
           <VideoPlayer
+            key={mountKey}
             ref={playerRef}
             src={currentSong.song.youtubeUrl || ''}
             width="100%"

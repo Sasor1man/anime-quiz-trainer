@@ -23,7 +23,7 @@ const TestSettings: FC = () => {
   // 🔹 Начальное состояние формы
   const [form, setForm] = useState<ITestSettings>({
     count: 10,
-    difficulties: [SongDifficulty.Easy, SongDifficulty.Medium],
+    difficulties: [SongDifficulty.VeryEasy],
     tagIds: [], // 👈 В будущем замени на данные из tagStore
     songTypes: [SongType.op],
     startFrom: StartFrom.Random,

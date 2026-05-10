@@ -3,7 +3,6 @@ import { ISong } from '../../songs/songs.type';
 import { testService } from './test.service';
 import { ITestSettings, ITestSongs, ITestSong } from './test.type';
 
-// Внутренний интерфейс для хранения результатов ответа
 export interface ITestResult {
   songId: string;
   songTitle: string;
@@ -43,7 +42,6 @@ class TestStore {
     return this.currentSong?.song || null;
   }
 
-  // Для плеера: с какой секунды начинать
   get currentStartTime(): number {
     return this.currentSong?.startAtSeconds ?? 0;
   }
@@ -62,9 +60,9 @@ class TestStore {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 4. Синхронные методы (СНАЧАЛА СИНХРОННОСТЬ)
+  // 🔹 4. Синхронные методы (СТРЕЛОЧНЫЕ ФУНКЦИИ)
   // ─────────────────────────────────────────────────────────────
-  checkAnswer(animeId: string, entryId: string, opNumber: number): boolean {
+  checkAnswer = (animeId: string, entryId: string, opNumber: number): boolean => {
     if (!this.currentSong) return false;
 
     const correctSong = this.currentSong.song;
@@ -80,18 +78,18 @@ class TestStore {
     });
 
     return isCorrect;
-  }
+  };
 
-  nextSong() {
+  nextSong = () => {
     if (this.currentIndex < this.songs.length - 1) {
       this.currentIndex++;
     } else {
       this.isFinished = true;
       this.isRunning = false;
     }
-  }
+  };
 
-  reset() {
+  reset = () => {
     this.settings = null;
     this.songs = [];
     this.currentIndex = 0;
@@ -99,12 +97,12 @@ class TestStore {
     this.isRunning = false;
     this.isFinished = false;
     this.error = null;
-  }
+  };
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 5. Асинхронные методы (ПОТОМ АСИНХРОННОСТЬ)
+  // 🔹 5. Асинхронные методы (СТРЕЛОЧНЫЕ ФУНКЦИИ)
   // ─────────────────────────────────────────────────────────────
-  async startTest(dto: ITestSettings) {
+  startTest = async (dto: ITestSettings) => {
     this.isLoading = true;
     this.error = null;
     this.reset();
@@ -126,7 +124,7 @@ class TestStore {
         this.isLoading = false;
       });
     }
-  }
+  };
 }
 
 export const testStore = new TestStore();
