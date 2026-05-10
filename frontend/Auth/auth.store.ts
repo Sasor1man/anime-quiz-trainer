@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
+import dayjs from 'dayjs';
 import { ICreateUserDto, IUser } from './auth.type';
 import { authService } from './auth.service';
 
@@ -18,16 +19,31 @@ class AuthStore {
     makeAutoObservable(this);
   }
 
-  hydrate() {
+  hydrate = () => {
     if (this.isHydrated) return;
 
-    const token = storage.getItem('refreshToken');
-    if (token) {
+    try {
+      const userJson = storage.getItem('userData');
+
+      if (!userJson) return
+
+      const userInfo: IUser = JSON.parse(userJson)
+      
       this.isLogged = true;
-      this.isAdmin = storage.getItem('isAdmin') === 'true';
-      this.refreshToken();
+
+      this.currentUser = userInfo
+
+      if (dayjs(userInfo.expiresAt).isAfter(dayjs())) {
+        this.refreshToken();
+      }
+        
+      this.isAdmin = userInfo.user.isAdmin
+    } catch(e) {
+      console.error(e);
+      throw e;
+    } finally {
+      this.isHydrated = true;
     }
-    this.isHydrated = true;
   }
 
   createUser = async (userDto: ICreateUserDto) => {
@@ -87,9 +103,8 @@ class AuthStore {
       this.isAdmin = data.user?.isAdmin === true;
     });
 
-    if (this.isAdmin) storage.setItem('isAdmin', 'true');
-    storage.setItem('refreshToken', data.refreshToken);
-    storage.setItem('accessToken', data.accessToken);
+    const userJson = JSON.stringify(data)
+    storage.setItem('userData', userJson);
   };
 }
 

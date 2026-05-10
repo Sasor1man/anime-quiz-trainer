@@ -15,6 +15,7 @@ import ShuffleIcon from '@mui/icons-material/Shuffle';
 import InfoIcon from '@mui/icons-material/Info';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { animeStore } from '../../anime/anime.store';
 import { titleStore } from '../../anime/[title]/title.store';
 import { learnStore } from './learn.store';
@@ -114,8 +115,18 @@ const Learn: FC = () => {
   }, [playSnippet, songData]);
 
   const handleGuess = useCallback(() => {
-    if (isGuessCorrect !== null) setGuessResult(isGuessCorrect ? 'success' : 'fail');
-  }, [isGuessCorrect]);
+    if (isGuessCorrect !== null) {
+      const result = isGuessCorrect ? 'success' : 'fail';
+      setGuessResult(result);
+      
+      // 🔹 Авто-раскрытие информации при правильном ответе
+      if (isGuessCorrect) {
+        setIsInfoRevealed(true);
+        clearSnippetTimer();
+        playerRef.current?.play();
+      }
+    }
+  }, [isGuessCorrect, clearSnippetTimer]);
 
   const handleRevealInfo = useCallback(() => {
     setIsInfoRevealed(true);
@@ -134,6 +145,26 @@ const Learn: FC = () => {
     setOpNumber(1);
   }, [clearSnippetTimer]);
 
+  // 🔹 ОБЪЕДИНЁННАЯ логика: оценка → следующий трек (единственная точка перехода)
+  const proceedToNextSong = useCallback(async (quality: LearnReviewQuality) => {
+    if (!currentSong?.song.id) return;
+    
+    // 1. Оптимистично обновляем UI
+    setFeedbackQuality(quality);
+    
+    try {
+      // 2. Отправляем оценку + автоматически получаем следующий трек (логика в сторе)
+      await submitReview({ songId: currentSong.song.id, quality });
+      
+      // 3. Сбрасываем форму для нового трека (после того, как стор обновил currentSong)
+      resetSession();
+    } catch (e) {
+      console.error('❌ Proceed to next failed:', e);
+      // Откатываем визуальный выбор, если запрос упал
+      setFeedbackQuality(null);
+    }
+  }, [currentSong, submitReview, resetSession]);
+
   // ─────────────────────────────────────────────────────────────
   // 🔹 6. Асинхронные функции + коллбеки
   // ─────────────────────────────────────────────────────────────
@@ -149,34 +180,6 @@ const Learn: FC = () => {
     setFilter({ animeId, skipCount: 0, maxResultCount: 50 });
     await getEntryList();
   }, []);
-
-  const handleSubmitFeedback = useCallback(async (quality: LearnReviewQuality) => {
-    if (!currentSong?.song.id) return;
-    setFeedbackQuality(quality);
-    try {
-      await submitReview({ songId: currentSong.song.id, quality });
-      // Сброс UI для следующего трека
-      setTimeout(() => {
-        setIsInfoRevealed(false);
-        setGuessResult(null);
-        setFeedbackQuality(null);
-        setSelectedAnimeId('');
-        setSelectedEntryId('');
-        setOpNumber(1);
-      }, 300);
-    } catch (e) {
-      console.error('❌ Submit review failed:', e);
-    }
-  }, [currentSong]);
-
-  const handleNextSong = useCallback(async () => {
-    resetSession();
-    try {
-      await getLearnNextSong();
-    } catch (e) {
-      console.error('❌ Failed to fetch next song:', e);
-    }
-  }, [resetSession, getLearnNextSong]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 7. useEffect
@@ -323,29 +326,43 @@ const Learn: FC = () => {
           {isInfoRevealed ? 'Открыть в плеере' : 'Открыть инфу'}
         </Button>
   
-        {/* 🆕 Кнопка "Следующий OP" */}
+        {/* 🆕 Кнопка "Следующий OP" — активна ТОЛЬКО после выбора оценки */}
         <Button 
           variant="contained" 
           color="secondary" 
           size="large" 
           startIcon={<SkipNextIcon />} 
-          onClick={handleNextSong} 
-          disabled={isLoading}
+          onClick={() => feedbackQuality && proceedToNextSong(feedbackQuality)}
+          disabled={!feedbackQuality || isSubmitting || isLoading}
         >
-          {isLoading ? 'Загрузка...' : 'Следующий OP'}
+          {isSubmitting ? 'Загрузка...' : 'Следующий OP'}
         </Button>
       </Box>
 
-      {/* 🔹 Результат угадывания */}
-      {guessResult && (
+      {/* 🔹 Результат угадывания (только если инфу НЕ раскрыли автоматически) */}
+      {guessResult && !isInfoRevealed && (
         <Alert severity={guessResult === 'success' ? 'success' : 'error'} sx={{ mb: 3 }}>
-          {guessResult === 'success' ? '✅ Верно! Отличное знание.' : '❌ Не угадал. Изучи детали ниже.'}
+          {guessResult === 'success' ? '✅ Верно! Отличное знание.' : '❌ Не угадал. Нажми "Открыть инфу" чтобы увидеть ответ.'}
         </Alert>
       )}
 
       {/* 🔹 Раскрытая информация + Фидбек */}
       {isInfoRevealed && (
         <Paper elevation={2} sx={{ p: 3, borderRadius: 2, mb: 3 }}>
+          
+          {/* ✅ Успешный баннер НАД информацией, если угадал верно */}
+          {guessResult === 'success' && (
+            <Alert 
+              severity="success" 
+              icon={<CheckCircleIcon />}
+              sx={{ mb: 2, borderRadius: 1 }}
+            >
+              <Typography variant="subtitle1" fontWeight={600}>
+                🎉 Верно! Ты отлично знаешь этот трек.
+              </Typography>
+            </Alert>
+          )}
+          
           <Typography variant="h6" gutterBottom>Информация о треке</Typography>
           <Typography variant="body1"><b>Название:</b> {songData.songTitle}</Typography>
           <Typography variant="body2" color="text.secondary"><b>Исполнитель:</b> {songData.artist?.name}</Typography>
@@ -366,13 +383,21 @@ const Learn: FC = () => {
                   variant={feedbackQuality === btn.val ? 'contained' : 'outlined'}
                   size="small"
                   startIcon={btn.icon}
-                  onClick={() => handleSubmitFeedback(btn.val)}
+                  // 🔹 При клике на оценку только запоминаем выбор (не отправляем сразу)
+                  onClick={() => setFeedbackQuality(btn.val)}
                   disabled={isSubmitting}
                 >
                   {btn.label}
                 </Button>
               ))}
             </Box>
+            
+            {/* 💡 Подсказка, что нужно нажать "Следующий OP" для отправки */}
+            {feedbackQuality && !isSubmitting && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Нажмите «Следующий OP» чтобы сохранить оценку и продолжить
+              </Typography>
+            )}
           </Box>
         </Paper>
       )}

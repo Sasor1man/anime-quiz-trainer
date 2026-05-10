@@ -45,7 +45,7 @@ const CreateTagModal = ({ open, onClose, onSuccess }: TagModalProps) => {
   // Деструктуризация для читаемости
   const { 
     getTagList, createTag, updateTag, deleteTag, 
-    isLoading, tagList, totalCount, filter, setFilter 
+    isLoading, tagList, totalCount, filter, setFilter ,resetFilter
   } = tagStore;
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,7 +62,11 @@ const CreateTagModal = ({ open, onClose, onSuccess }: TagModalProps) => {
     if (open) getTagList();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     else setLocalError(null);
-    return () => { setEditingId(null); reset(); };
+    return () => { 
+      setEditingId(null);
+      reset();
+      resetFilter()
+    };
   }, [open]);
 
   // 🔍 Поиск (новый setFilter API)
