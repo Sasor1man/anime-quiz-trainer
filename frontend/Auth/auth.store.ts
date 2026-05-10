@@ -34,7 +34,7 @@ class AuthStore {
       this.currentUser = userInfo
 
       if (dayjs(userInfo.expiresAt).isAfter(dayjs())) {
-        this.refreshToken();
+        return this.refreshToken();
       }
         
       this.isAdmin = userInfo.user.isAdmin
