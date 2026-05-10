@@ -7,7 +7,7 @@ export interface SongDto {
   youtubeUrl: string,
   type: SongType,
   orderNumber: number,
-  difficulty: number,
+  difficulty: SongDifficulty,
   startTiming: number,
   chorusTiming: number
 }
@@ -25,4 +25,14 @@ export interface ISong extends SongDto{
   animeTitle: string,
   artist: IArtist,
   createdAt: Date
+}
+
+
+
+export enum SongDifficulty {
+  VeryEasy = 1,
+  Easy = 2,
+  Medium = 3,
+  Hard = 4,
+  VeryHard = 5
 }
