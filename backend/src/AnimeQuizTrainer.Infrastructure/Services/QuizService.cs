@@ -85,7 +85,6 @@ public class QuizService(
         // has already happened in GetNext, so we use the current QuizPosition as baseline)
         record.NextShowPosition = user.QuizPosition + record.GapSize;
 
-        progress.Update(record);
         await uow.SaveChangesAsync(ct);
 
         return new ReviewResponse(request.SongId, record.GapSize, record.NextShowPosition.Value);

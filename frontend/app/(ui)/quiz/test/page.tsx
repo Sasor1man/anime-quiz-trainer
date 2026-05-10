@@ -9,12 +9,12 @@ import {
   Stack, Divider
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { SongType } from '../../songs/songs.type';
-import { songTypes, songTypesConfig } from '../../songs/songs.config';
+import { SongDifficulty, SongType } from '../../songs/songs.type';
+import { difficultyConfig, songDifficultyArray, songTypes, songTypesConfig } from '../../songs/songs.config';
 import { tagStore } from '../../anime/CreateTagModal/tag.store';
 import { testStore } from './test.store';
-import { ITestSettings, SongDifficulty, StartFrom } from './test.type';
-import { difficultyConfig, songDifficultyArray, startFromArray, startFromConfig } from './test.config';
+import { ITestSettings, StartFrom } from './test.type';
+import { startFromArray, startFromConfig } from './test.config';
 
 const TestSettings: FC = () => {
   const router = useRouter();
@@ -23,10 +23,10 @@ const TestSettings: FC = () => {
   // 🔹 Начальное состояние формы
   const [form, setForm] = useState<ITestSettings>({
     count: 10,
-    difficulties: [SongDifficulty.Easy, SongDifficulty.Medium],
+    difficulties: [SongDifficulty.VeryEasy],
     tagIds: [], // 👈 В будущем замени на данные из tagStore
     songTypes: [SongType.op],
-    startFrom: StartFrom.Random,
+    startFrom: StartFrom.Beginning,
     segmentSeconds: 5,
   });
 
@@ -51,6 +51,7 @@ const TestSettings: FC = () => {
     await testStore.startTest(form);
     // Если ошибок нет → идем на страницу прохождения
     if (!testStore.error) {
+      router.refresh();
       router.push('/quiz/test/play');
     }
   }, [form, router]);

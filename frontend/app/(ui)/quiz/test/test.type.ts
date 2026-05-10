@@ -1,4 +1,4 @@
-import { ISong, SongType } from '../../songs/songs.type';
+import { ISong, SongDifficulty, SongType } from '../../songs/songs.type';
 
 export interface ITestSettings {
   count: number,
@@ -18,14 +18,6 @@ export interface ITestSongs {
 export interface ITestSong {
   song: ISong,
   startAtSeconds: number
-}
-
-export enum SongDifficulty {
-  VeryEasy = 1,
-  Easy = 2,
-  Medium = 3,
-  Hard = 4,
-  VeryHard = 5
 }
 
 export enum StartFrom {
