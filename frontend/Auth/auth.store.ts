@@ -11,40 +11,47 @@ const storage = {
 
 class AuthStore {
   isLogged = false;
+
   isAdmin = false;
+
   currentUser: IUser | null = null;
+
+  accessToken?: string;
+
+
   private isHydrated = false;
 
   constructor() {
     makeAutoObservable(this);
   }
 
-  hydrate = () => {
+  hydrate = async () => {
     if (this.isHydrated) return;
+    this.isHydrated = true;
 
     try {
       const userJson = storage.getItem('userData');
+      if (!userJson) return;
 
-      if (!userJson) return
-
-      const userInfo: IUser = JSON.parse(userJson)
-      
-      this.isLogged = true;
-
-      this.currentUser = userInfo
-
-      if (dayjs(userInfo.expiresAt).isAfter(dayjs())) {
-        this.refreshToken();
+      const userInfo: IUser = JSON.parse(userJson);
+    
+      runInAction(() => {
+        this.currentUser = userInfo;
+        this.isLogged = true;
+        this.isAdmin = userInfo.user?.isAdmin === true;
+        this.accessToken = userInfo.accessToken;
+      });
+    
+      if (!dayjs(userInfo.expiresAt).isAfter(dayjs())) {
+        this.refreshToken().catch(() => {
+          console.warn('⚠️ Token refresh failed during hydrate');
+        });
       }
-        
-      this.isAdmin = userInfo.user.isAdmin
     } catch(e) {
-      console.error(e);
-      throw e;
-    } finally {
-      this.isHydrated = true;
+      console.error('❌ Hydrate failed:', e);
+      this.logoutUser();
     }
-  }
+  };
 
   createUser = async (userDto: ICreateUserDto) => {
     try {
@@ -101,6 +108,7 @@ class AuthStore {
       this.currentUser = data;
       this.isLogged = true;
       this.isAdmin = data.user?.isAdmin === true;
+      this.accessToken = data.accessToken
     });
 
     const userJson = JSON.stringify(data)
