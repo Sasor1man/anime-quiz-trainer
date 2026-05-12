@@ -26,6 +26,7 @@ import { ISong, SongDto, SongType } from '../../songs/songs.type';
 import { IArtist } from '../../artists/artists.type';
 import { titleStore } from './title.store';
 import { AnimeEntryDto, AnimeEntryInfo, AnimeType } from './title.type';
+import { animeEntryTypes, animeEntryTypesConfig } from './title.config';
 import { authStore } from '@/Auth/auth.store';
 
 // 🔹 2. Константы
@@ -383,7 +384,9 @@ const AnimeTitlePage: FC = () => {
                 <CardContent>
                   <Typography variant="h6" noWrap>{entry.title}</Typography>
                   <Typography variant="body2" color="text.secondary">{entry.titleEn}</Typography>
-                  <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1 }}>Тип: {entry.type}</Typography>
+                  <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mt: 1 }}>
+                    Тип: {animeEntryTypesConfig[entry.type]?.label || entry.type}
+                  </Typography>
                 </CardContent>
                 <CardActions disableSpacing sx={{ justifyContent: 'space-between', px: 2 }}>
                   <Box sx={{ display: 'flex' }}>
@@ -419,6 +422,7 @@ const AnimeTitlePage: FC = () => {
           <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 2 }}>
             <Typography><b>Название:</b> {expandedEntry.title}</Typography>
             <Typography><b>Создан:</b> {new Date(expandedEntry.createdAt).toLocaleDateString()}</Typography>
+            <Typography><b>Тип:</b> {animeEntryTypesConfig[expandedEntry.type]?.label || expandedEntry.type}</Typography>
           </Box>
           
           <Divider sx={{ my: 2 }} />
@@ -527,7 +531,21 @@ const AnimeTitlePage: FC = () => {
         <DialogContent>
           <TextField label="Название" value={seasonForm.title} onChange={e => setSeasonForm({ ...seasonForm, title: e.target.value })} fullWidth sx={{ mt: 1, mb: 2 }} />
           <TextField label="Название (EN)" value={seasonForm.titleEn} onChange={e => setSeasonForm({ ...seasonForm, titleEn: e.target.value })} fullWidth sx={{ mb: 2 }} />
-          <TextField label="Тип (число)" type="number" value={seasonForm.type} onChange={e => setSeasonForm({ ...seasonForm, type: Number(e.target.value) })} fullWidth />
+          
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Тип *</InputLabel>
+            <Select
+              value={seasonForm.type ?? AnimeType.TV}
+              label="Тип *"
+              onChange={e => setSeasonForm({ ...seasonForm, type: Number(e.target.value) as AnimeType })}
+            >
+              {animeEntryTypes.map((typeVal) => (
+                <MenuItem key={typeVal} value={typeVal}>
+                  {animeEntryTypesConfig[typeVal]?.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseSeasonModals}>Отмена</Button>
