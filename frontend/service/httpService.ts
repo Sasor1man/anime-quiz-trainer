@@ -1,11 +1,16 @@
 import { buildQueryString } from './service.utils';
+import { authStore } from '@/Auth/auth.store';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 class HttpFetch {
   private baseURL = 'https://anime-quiz-trainer-production.up.railway.app';
   private abortController: AbortController | null = null;
-  private token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  // private token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  private get token () {
+    return authStore.accessToken
+  }
 
   private async request<T>(
     method: HttpMethod,
