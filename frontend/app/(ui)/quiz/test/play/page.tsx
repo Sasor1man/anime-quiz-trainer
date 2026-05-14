@@ -18,13 +18,6 @@ import { animeStore } from '@/app/(ui)/anime/anime.store';
 import { titleStore } from '@/app/(ui)/anime/[title]/title.store';
 import VideoPlayer from '@/app/(ui)/{components}/VideoPlayer';
 
-// ебать костыль, навайбкодил хуйню, теперь хз как исправить, skill issue, хули
-// не бейте ногами
-// не ну оно хотя бы работает, ток первая песня все равно на секунду меньше, это уже хз как костылить, мб просто на таймер поставить инициализацию ютуба
-// но пока можно забить, надеюсь сильно не будет никого тригерить
-// TODO убрать костыль
-let GLOBAL_PLAYER_READY = false;
-
 const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
   // 🔹 1. Защита роута + редирект при завершении
@@ -54,13 +47,12 @@ const TestPlay: FC = () => {
   const [guessResult, setGuessResult] = useState<'success' | 'fail' | null>(null);
   
   const [mountKey] = useState(() => crypto.randomUUID());
-  const [isPlaying, setIsPlaying] = useState(false); // 🔹 Declarative state
+  
+  // 🔹 Declarative state для управления плеером
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   
   const isRevealed = guessResult !== null;
-
-  // 🔹 Двойная система готовности: ref (синхронно) + state (реактивно)
-  const isApiReadyRef = useRef(GLOBAL_PLAYER_READY);
-  const [isReady, setIsReady] = useState(GLOBAL_PLAYER_READY);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 3. Загрузка данных
@@ -87,28 +79,34 @@ const TestPlay: FC = () => {
   );
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 4. Логика сниппета (State-driven)
+  // 🔹 4. Логика сниппета (ПОЛНОСТЬЮ декларативная)
   // ─────────────────────────────────────────────────────────────
   const clearTimer = useCallback(() => {
-    if (snippetTimerRef.current) clearTimeout(snippetTimerRef.current);
-    snippetTimerRef.current = null;
+    if (snippetTimerRef.current) {
+      clearTimeout(snippetTimerRef.current);
+      snippetTimerRef.current = null;
+    }
   }, []);
 
   const playSnippet = useCallback(() => {
     clearTimer();
     const p = playerRef.current;
-    if (!p || !currentSong) return;
+    if (!p || !currentSong || !isReady) return;
 
     const startTime = currentSong.startAtSeconds ?? 0;
-    p.pause();
+    
+    // 🔹 Императивный seek (единственное, что оставляем)
     p.currentTime = Math.max(0, startTime);
-
-    // 🔹 YouTube нужно ~150мс на обработку seek перед play
-    setTimeout(() => {
-      p.play().catch(() => {});
-      setIsPlaying(true); // 🔹 State trigger для таймера
-    }, 150);
-  }, [currentSong, clearTimer]);
+    
+    // 🔹 Declarative play: просто меняем стейт, React сам скажет плееру играть
+    setIsPlaying(true);
+    
+    // 🔹 Таймер паузы: меняем стейт → React сам поставит на паузу
+    const duration = settings?.segmentSeconds ?? 5;
+    snippetTimerRef.current = setTimeout(() => {
+      setIsPlaying(false);
+    }, duration * 1000);
+  }, [currentSong, isReady, settings?.segmentSeconds, clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 5. Обработчики
@@ -118,8 +116,7 @@ const TestPlay: FC = () => {
     const isCorrect = testStore.checkAnswer(selectedAnimeId, selectedEntryId, opNumber);
     setGuessResult(isCorrect ? 'success' : 'fail');
     clearTimer();
-    setIsPlaying(false);
-    playerRef.current?.pause();
+    setIsPlaying(false); // 🔹 Declarative pause
   }, [selectedAnimeId, selectedEntryId, opNumber, clearTimer]);
 
   const handleNext = useCallback(() => {
@@ -127,51 +124,40 @@ const TestPlay: FC = () => {
     setSelectedAnimeId('');
     setSelectedEntryId('');
     setOpNumber(1);
-    setIsPlaying(false);
+    setIsPlaying(false); // 🔹 Declarative pause
     testStore.nextSong();
   }, []);
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 6. useEffect (Управление таймером через React State)
+  // 🔹 6. useEffect (Детерминированная синхронизация)
   // ─────────────────────────────────────────────────────────────
-  // 🔹 Таймер привязан к isPlaying, а не к ненадёжным событиям iframe
-  useEffect(() => {
-    if (isPlaying && currentSong && guessResult === null) {
-      const duration = settings?.segmentSeconds ?? 5;
-      snippetTimerRef.current = setTimeout(() => {
-        setIsPlaying(false);
-        playerRef.current?.pause();
-      }, duration * 1000);
-    }
-    return () => clearTimer();
-  }, [isPlaying, currentSong?.song.id, guessResult, settings?.segmentSeconds, clearTimer]);
-
-  // Сброс стейта при смене трека или маунте
+  
+  // 🔹 6.1: Сброс при смене трека или маунте
   useLayoutEffect(() => {
     setIsPlaying(false);
-    setIsReady(GLOBAL_PLAYER_READY);
+    setIsReady(false);
     clearTimer();
-    return () => {
-      playerRef.current?.pause();
-      clearTimer();
-    };
+    // Не вызываем императивный pause — React сам остановит плеер при isPlaying=false
   }, [mountKey, currentSong?.song.id, clearTimer]);
 
-  // Автозапуск при маунте или смене трека
+  // 🔹 6.2: Автозапуск при готовности
   useEffect(() => {
     if (currentSong && !guessResult && isReady) {
       playSnippet();
     }
-  }, [currentSong?.song.id, mountKey, guessResult, playSnippet, isReady]);
+  }, [currentSong?.song.id, mountKey, guessResult, isReady, playSnippet]);
 
+  // 🔹 6.3: Обработчик onReady → ставим флаг готовности
   useEffect(() => {
-    console.log('ready useEffect', isApiReadyRef.current)
-    
-    if (isApiReadyRef.current && !isReady) {
+    if (isReady) return; // Уже готов
+    // Дополнительная проверка: если плеер уже в рефе, считаем готовым
+    if (playerRef.current) {
       setIsReady(true);
-      console.log('ready')
     }
-  }, [mountKey, currentSong?.song.id, isReady]);
+  }, [isReady, mountKey, currentSong?.song.id]);
+
+  // 🔹 6.4: Очистка таймеров при размонтировании
+  useEffect(() => () => clearTimer(), [clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 7. Render
@@ -200,13 +186,14 @@ const TestPlay: FC = () => {
             width="100%"
             height="100%"
             style={{ position: 'absolute', top: 0, left: 0 }}
-            playing={isPlaying} // 🔹 Declarative control
+            
+            // 🔹 КЛЮЧЕВОЕ: Декларативное управление воспроизведением
+            playing={isPlaying}
+            
             loop={false}
             controls={isRevealed}
             onReady={() => {
-              isApiReadyRef.current = true;
               setIsReady(true);
-              GLOBAL_PLAYER_READY = true; 
             }}
             config={{ youtube: { playerVars: { enablejsapi: 1, playsinline: 1, controls: 0, modestbranding: 1, disablekb: 1 } } as any}}
           />
