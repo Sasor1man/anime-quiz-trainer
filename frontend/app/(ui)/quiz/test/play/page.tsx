@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Paper, LinearProgress, Button, TextField,
   Autocomplete, Select, MenuItem,
-  Alert, Skeleton, Stack,
+  Alert, Skeleton, Stack, CircularProgress,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -17,6 +17,7 @@ import { testStore } from '../test.store';
 import { animeStore } from '@/app/(ui)/anime/anime.store';
 import { titleStore } from '@/app/(ui)/anime/[title]/title.store';
 import VideoPlayer from '@/app/(ui)/{components}/VideoPlayer';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
   const router = useRouter();
   const { currentSong, progressPercent, isRunning, isFinished, settings } = testStore;
-  const { animeList, getAnimeList } = animeStore;
+  const { animeList, getAnimeList, isLoading: animeLoading } = animeStore;
   const { entryList, getEntryList, setFilter } = titleStore;
 
   useEffect(() => {
@@ -47,18 +48,30 @@ const TestPlay: FC = () => {
   const [guessResult, setGuessResult] = useState<'success' | 'fail' | null>(null);
   
   const [mountKey] = useState(() => crypto.randomUUID());
-  
-  // 🔹 Declarative state для управления плеером
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  
   const isRevealed = guessResult !== null;
 
-  // ─────────────────────────────────────────────────────────────
-  // 🔹 3. Загрузка данных
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => { getAnimeList(); }, [getAnimeList]);
+  // 🔹 Поиск аниме: стейт ввода + дебаунс
+  const [animeSearchQuery, setAnimeSearchQuery] = useState('');
+  const debouncedAnimeQuery = useDebounce(animeSearchQuery, 400);
 
+  // ─────────────────────────────────────────────────────────────
+  // 🔹 3. Загрузка данных (архитектурно верный паттерн: setFilter → get)
+  // ─────────────────────────────────────────────────────────────
+  
+  // 🔹 Асинхронный поиск аниме: СЕТЬ ФИЛЬТР → ГЕТ СПИСОК
+  useEffect(() => {
+    // 1️⃣ Синхронно обновляем фильтр в сторе
+    animeStore.setFilter({ 
+      filterText: debouncedAnimeQuery, 
+      maxResultCount: 20,  // 🔹 Лимит 20 как в создании опов
+      skipCount: 0 
+    });
+    // 2️⃣ Асинхронно загружаем данные (метод сам прочитает this.filter)
+    getAnimeList();
+  }, [debouncedAnimeQuery, getAnimeList]);
+
+  // Загрузка сезонов при выборе аниме (тот же паттерн)
   useEffect(() => {
     if (selectedAnimeId) {
       setFilter({ animeId: selectedAnimeId, skipCount: 0, maxResultCount: 50 });
@@ -74,12 +87,12 @@ const TestPlay: FC = () => {
   );
 
   const selectedAnimeObj = useMemo(
-    () => animeList?.find(a => a.id === selectedAnimeId),
+    () => animeList?.find(a => a.id === selectedAnimeId) || null,
     [animeList, selectedAnimeId]
   );
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 4. Логика сниппета (ПОЛНОСТЬЮ декларативная)
+  // 🔹 4. Логика сниппета
   // ─────────────────────────────────────────────────────────────
   const clearTimer = useCallback(() => {
     if (snippetTimerRef.current) {
@@ -91,22 +104,20 @@ const TestPlay: FC = () => {
   const playSnippet = useCallback(() => {
     clearTimer();
     const p = playerRef.current;
-    if (!p || !currentSong || !isReady) return;
+    if (!p || !currentSong) return;
 
     const startTime = currentSong.startAtSeconds ?? 0;
-    
-    // 🔹 Императивный seek (единственное, что оставляем)
+    p.pause();
     p.currentTime = Math.max(0, startTime);
-    
-    // 🔹 Declarative play: просто меняем стейт, React сам скажет плееру играть
+
+    p.play().catch(() => { p.muted = true; p.play(); });
     setIsPlaying(true);
     
-    // 🔹 Таймер паузы: меняем стейт → React сам поставит на паузу
     const duration = settings?.segmentSeconds ?? 5;
     snippetTimerRef.current = setTimeout(() => {
       setIsPlaying(false);
     }, duration * 1000);
-  }, [currentSong, isReady, settings?.segmentSeconds, clearTimer]);
+  }, [currentSong, settings?.segmentSeconds, clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 5. Обработчики
@@ -116,7 +127,7 @@ const TestPlay: FC = () => {
     const isCorrect = testStore.checkAnswer(selectedAnimeId, selectedEntryId, opNumber);
     setGuessResult(isCorrect ? 'success' : 'fail');
     clearTimer();
-    setIsPlaying(false); // 🔹 Declarative pause
+    setIsPlaying(false);
   }, [selectedAnimeId, selectedEntryId, opNumber, clearTimer]);
 
   const handleNext = useCallback(() => {
@@ -124,39 +135,26 @@ const TestPlay: FC = () => {
     setSelectedAnimeId('');
     setSelectedEntryId('');
     setOpNumber(1);
-    setIsPlaying(false); // 🔹 Declarative pause
+    setIsPlaying(false);
+    animeStore.resetFilter();
     testStore.nextSong();
   }, []);
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 6. useEffect (Детерминированная синхронизация)
+  // 🔹 6. useEffect (Синхронизация)
   // ─────────────────────────────────────────────────────────────
-  
-  // 🔹 6.1: Сброс при смене трека или маунте
   useLayoutEffect(() => {
     setIsPlaying(false);
-    setIsReady(false);
     clearTimer();
-    // Не вызываем императивный pause — React сам остановит плеер при isPlaying=false
   }, [mountKey, currentSong?.song.id, clearTimer]);
 
-  // 🔹 6.2: Автозапуск при готовности
   useEffect(() => {
-    if (currentSong && !guessResult && isReady) {
-      playSnippet();
+    if (currentSong && !guessResult) {
+      const t = setTimeout(() => playSnippet(), 100);
+      return () => clearTimeout(t);
     }
-  }, [currentSong?.song.id, mountKey, guessResult, isReady, playSnippet]);
+  }, [currentSong?.song.id, mountKey, guessResult, playSnippet]);
 
-  // 🔹 6.3: Обработчик onReady → ставим флаг готовности
-  useEffect(() => {
-    if (isReady) return; // Уже готов
-    // Дополнительная проверка: если плеер уже в рефе, считаем готовым
-    if (playerRef.current) {
-      setIsReady(true);
-    }
-  }, [isReady, mountKey, currentSong?.song.id]);
-
-  // 🔹 6.4: Очистка таймеров при размонтировании
   useEffect(() => () => clearTimer(), [clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
@@ -178,7 +176,6 @@ const TestPlay: FC = () => {
       {/* 🔹 Плеер + Заглушка */}
       <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden', mb: 3, position: 'relative' }}>
         <Box sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9' }}>
-    
           <VideoPlayer
             key={`${currentSong?.song.id || 'loading'}-${mountKey}`}
             ref={playerRef}
@@ -186,15 +183,9 @@ const TestPlay: FC = () => {
             width="100%"
             height="100%"
             style={{ position: 'absolute', top: 0, left: 0 }}
-            
-            // 🔹 КЛЮЧЕВОЕ: Декларативное управление воспроизведением
             playing={isPlaying}
-            
             loop={false}
             controls={isRevealed}
-            onReady={() => {
-              setIsReady(true);
-            }}
             config={{ youtube: { playerVars: { enablejsapi: 1, playsinline: 1, controls: 0, modestbranding: 1, disablekb: 1 } } as any}}
           />
 
@@ -222,20 +213,42 @@ const TestPlay: FC = () => {
       {/* Форма угадывания */}
       <Paper elevation={2} sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, mb: 3 }}>
         <Stack spacing={2}>
+          {/* 🔹 Асинхронный Autocomplete с дебаунсом */}
           <Autocomplete
             options={animeList || []}
-            getOptionLabel={(opt) => opt.title}
+            loading={animeLoading}
             value={selectedAnimeObj}
             disabled={guessResult !== null}
+            onInputChange={(_, newInput, reason) => {
+              if (reason !== 'reset') setAnimeSearchQuery(newInput);
+            }}
             onChange={(_, newVal) => {
               setSelectedAnimeId(newVal?.id || '');
               setSelectedEntryId('');
               setOpNumber(1);
             }}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(opt) => opt.title}
+            isOptionEqualToValue={(option, value) => value ? option.id === value.id : false}
+            filterOptions={(options) => options}
             renderInput={(params) => (
-              <TextField {...params} label="Аниме" size="small" placeholder="Начни вводить..." />
+              <TextField
+                {...params}
+                label="Аниме"
+                size="small"
+                placeholder="Начни вводить название..."
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {animeLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
             )}
+            noOptionsText={animeSearchQuery ? 'Ничего не найдено' : 'Введите название для поиска'}
+            loadingText="Поиск..."
           />
 
           <Select 
