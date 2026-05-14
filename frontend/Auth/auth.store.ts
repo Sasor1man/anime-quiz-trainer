@@ -75,7 +75,7 @@ class AuthStore {
 
   refreshToken = async () => {
     try {
-      const token = storage.getItem('refreshToken');
+      const token = this.currentUser?.refreshToken;
       if (!token) return;
 
       const user = await authService.refreshToken(token);
