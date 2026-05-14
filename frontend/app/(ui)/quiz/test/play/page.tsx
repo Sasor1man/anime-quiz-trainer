@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   Box, Typography, Paper, LinearProgress, Button, TextField,
   Autocomplete, Select, MenuItem,
-  Alert, Skeleton, Stack,
+  Alert, Skeleton, Stack, CircularProgress,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
@@ -17,13 +17,7 @@ import { testStore } from '../test.store';
 import { animeStore } from '@/app/(ui)/anime/anime.store';
 import { titleStore } from '@/app/(ui)/anime/[title]/title.store';
 import VideoPlayer from '@/app/(ui)/{components}/VideoPlayer';
-
-// ебать костыль, навайбкодил хуйню, теперь хз как исправить, skill issue, хули
-// не бейте ногами
-// не ну оно хотя бы работает, ток первая песня все равно на секунду меньше, это уже хз как костылить, мб просто на таймер поставить инициализацию ютуба
-// но пока можно забить, надеюсь сильно не будет никого тригерить
-// TODO убрать костыль
-let GLOBAL_PLAYER_READY = false;
+import { useDebounce } from '@/hooks/useDebounce';
 
 const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
@@ -31,7 +25,7 @@ const TestPlay: FC = () => {
   // ─────────────────────────────────────────────────────────────
   const router = useRouter();
   const { currentSong, progressPercent, isRunning, isFinished, settings } = testStore;
-  const { animeList, getAnimeList } = animeStore;
+  const { animeList, getAnimeList, isLoading: animeLoading } = animeStore;
   const { entryList, getEntryList, setFilter } = titleStore;
 
   useEffect(() => {
@@ -54,19 +48,30 @@ const TestPlay: FC = () => {
   const [guessResult, setGuessResult] = useState<'success' | 'fail' | null>(null);
   
   const [mountKey] = useState(() => crypto.randomUUID());
-  const [isPlaying, setIsPlaying] = useState(false); // 🔹 Declarative state
-  
+  const [isPlaying, setIsPlaying] = useState(false);
   const isRevealed = guessResult !== null;
 
-  // 🔹 Двойная система готовности: ref (синхронно) + state (реактивно)
-  const isApiReadyRef = useRef(GLOBAL_PLAYER_READY);
-  const [isReady, setIsReady] = useState(GLOBAL_PLAYER_READY);
+  // 🔹 Поиск аниме: стейт ввода + дебаунс
+  const [animeSearchQuery, setAnimeSearchQuery] = useState('');
+  const debouncedAnimeQuery = useDebounce(animeSearchQuery, 400);
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 3. Загрузка данных
+  // 🔹 3. Загрузка данных (архитектурно верный паттерн: setFilter → get)
   // ─────────────────────────────────────────────────────────────
-  useEffect(() => { getAnimeList(); }, [getAnimeList]);
+  
+  // 🔹 Асинхронный поиск аниме: СЕТЬ ФИЛЬТР → ГЕТ СПИСОК
+  useEffect(() => {
+    // 1️⃣ Синхронно обновляем фильтр в сторе
+    animeStore.setFilter({ 
+      filterText: debouncedAnimeQuery, 
+      maxResultCount: 20,  // 🔹 Лимит 20 как в создании опов
+      skipCount: 0 
+    });
+    // 2️⃣ Асинхронно загружаем данные (метод сам прочитает this.filter)
+    getAnimeList();
+  }, [debouncedAnimeQuery, getAnimeList]);
 
+  // Загрузка сезонов при выборе аниме (тот же паттерн)
   useEffect(() => {
     if (selectedAnimeId) {
       setFilter({ animeId: selectedAnimeId, skipCount: 0, maxResultCount: 50 });
@@ -82,16 +87,18 @@ const TestPlay: FC = () => {
   );
 
   const selectedAnimeObj = useMemo(
-    () => animeList?.find(a => a.id === selectedAnimeId),
+    () => animeList?.find(a => a.id === selectedAnimeId) || null,
     [animeList, selectedAnimeId]
   );
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 4. Логика сниппета (State-driven)
+  // 🔹 4. Логика сниппета
   // ─────────────────────────────────────────────────────────────
   const clearTimer = useCallback(() => {
-    if (snippetTimerRef.current) clearTimeout(snippetTimerRef.current);
-    snippetTimerRef.current = null;
+    if (snippetTimerRef.current) {
+      clearTimeout(snippetTimerRef.current);
+      snippetTimerRef.current = null;
+    }
   }, []);
 
   const playSnippet = useCallback(() => {
@@ -103,12 +110,14 @@ const TestPlay: FC = () => {
     p.pause();
     p.currentTime = Math.max(0, startTime);
 
-    // 🔹 YouTube нужно ~150мс на обработку seek перед play
-    setTimeout(() => {
-      p.play().catch(() => {});
-      setIsPlaying(true); // 🔹 State trigger для таймера
-    }, 150);
-  }, [currentSong, clearTimer]);
+    p.play().catch(() => { p.muted = true; p.play(); });
+    setIsPlaying(true);
+    
+    const duration = settings?.segmentSeconds ?? 5;
+    snippetTimerRef.current = setTimeout(() => {
+      setIsPlaying(false);
+    }, duration * 1000);
+  }, [currentSong, settings?.segmentSeconds, clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 5. Обработчики
@@ -119,7 +128,6 @@ const TestPlay: FC = () => {
     setGuessResult(isCorrect ? 'success' : 'fail');
     clearTimer();
     setIsPlaying(false);
-    playerRef.current?.pause();
   }, [selectedAnimeId, selectedEntryId, opNumber, clearTimer]);
 
   const handleNext = useCallback(() => {
@@ -128,50 +136,26 @@ const TestPlay: FC = () => {
     setSelectedEntryId('');
     setOpNumber(1);
     setIsPlaying(false);
+    animeStore.resetFilter();
     testStore.nextSong();
   }, []);
 
   // ─────────────────────────────────────────────────────────────
-  // 🔹 6. useEffect (Управление таймером через React State)
+  // 🔹 6. useEffect (Синхронизация)
   // ─────────────────────────────────────────────────────────────
-  // 🔹 Таймер привязан к isPlaying, а не к ненадёжным событиям iframe
-  useEffect(() => {
-    if (isPlaying && currentSong && guessResult === null) {
-      const duration = settings?.segmentSeconds ?? 5;
-      snippetTimerRef.current = setTimeout(() => {
-        setIsPlaying(false);
-        playerRef.current?.pause();
-      }, duration * 1000);
-    }
-    return () => clearTimer();
-  }, [isPlaying, currentSong?.song.id, guessResult, settings?.segmentSeconds, clearTimer]);
-
-  // Сброс стейта при смене трека или маунте
   useLayoutEffect(() => {
     setIsPlaying(false);
-    setIsReady(GLOBAL_PLAYER_READY);
     clearTimer();
-    return () => {
-      playerRef.current?.pause();
-      clearTimer();
-    };
   }, [mountKey, currentSong?.song.id, clearTimer]);
 
-  // Автозапуск при маунте или смене трека
   useEffect(() => {
-    if (currentSong && !guessResult && isReady) {
-      playSnippet();
+    if (currentSong && !guessResult) {
+      const t = setTimeout(() => playSnippet(), 100);
+      return () => clearTimeout(t);
     }
-  }, [currentSong?.song.id, mountKey, guessResult, playSnippet, isReady]);
+  }, [currentSong?.song.id, mountKey, guessResult, playSnippet]);
 
-  useEffect(() => {
-    console.log('ready useEffect', isApiReadyRef.current)
-    
-    if (isApiReadyRef.current && !isReady) {
-      setIsReady(true);
-      console.log('ready')
-    }
-  }, [mountKey, currentSong?.song.id, isReady]);
+  useEffect(() => () => clearTimer(), [clearTimer]);
 
   // ─────────────────────────────────────────────────────────────
   // 🔹 7. Render
@@ -192,7 +176,6 @@ const TestPlay: FC = () => {
       {/* 🔹 Плеер + Заглушка */}
       <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden', mb: 3, position: 'relative' }}>
         <Box sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9' }}>
-    
           <VideoPlayer
             key={`${currentSong?.song.id || 'loading'}-${mountKey}`}
             ref={playerRef}
@@ -200,14 +183,9 @@ const TestPlay: FC = () => {
             width="100%"
             height="100%"
             style={{ position: 'absolute', top: 0, left: 0 }}
-            playing={isPlaying} // 🔹 Declarative control
+            playing={isPlaying}
             loop={false}
             controls={isRevealed}
-            onReady={() => {
-              isApiReadyRef.current = true;
-              setIsReady(true);
-              GLOBAL_PLAYER_READY = true; 
-            }}
             config={{ youtube: { playerVars: { enablejsapi: 1, playsinline: 1, controls: 0, modestbranding: 1, disablekb: 1 } } as any}}
           />
 
@@ -235,20 +213,42 @@ const TestPlay: FC = () => {
       {/* Форма угадывания */}
       <Paper elevation={2} sx={{ p: { xs: 2, md: 3 }, borderRadius: 2, mb: 3 }}>
         <Stack spacing={2}>
+          {/* 🔹 Асинхронный Autocomplete с дебаунсом */}
           <Autocomplete
             options={animeList || []}
-            getOptionLabel={(opt) => opt.title}
+            loading={animeLoading}
             value={selectedAnimeObj}
             disabled={guessResult !== null}
+            onInputChange={(_, newInput, reason) => {
+              if (reason !== 'reset') setAnimeSearchQuery(newInput);
+            }}
             onChange={(_, newVal) => {
               setSelectedAnimeId(newVal?.id || '');
               setSelectedEntryId('');
               setOpNumber(1);
             }}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
+            getOptionLabel={(opt) => opt.title}
+            isOptionEqualToValue={(option, value) => value ? option.id === value.id : false}
+            filterOptions={(options) => options}
             renderInput={(params) => (
-              <TextField {...params} label="Аниме" size="small" placeholder="Начни вводить..." />
+              <TextField
+                {...params}
+                label="Аниме"
+                size="small"
+                placeholder="Начни вводить название..."
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {animeLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
             )}
+            noOptionsText={animeSearchQuery ? 'Ничего не найдено' : 'Введите название для поиска'}
+            loadingText="Поиск..."
           />
 
           <Select 
